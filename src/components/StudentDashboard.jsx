@@ -578,7 +578,7 @@ function StudentDashboard({ session, profile }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                 <span className="badge badge-blue">Welcome Back</span>
               </div>
-              <h1 className="title">Hi, {profile?.full_name?.split(' ')[0] || 'Builder'}</h1>
+              <h1 className="dashboard-title">Hi, {profile?.full_name?.split(' ')[0] || 'Builder'}</h1>
               <p className="subtitle">Ready to join your next dream team? Here's what's happening on campus.</p>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginTop: '2rem' }}>
@@ -688,7 +688,7 @@ function StudentDashboard({ session, profile }) {
         {/* DISCOVERY TAB */}
         {activeTab === 'discovery' && (
           <div className="fade-in-up">
-            <h1 className="title">Global Explorer</h1>
+            <h1 className="dashboard-title">Team Discovery</h1>
             <p className="subtitle">Curated hackathons and opportunities from around the web.</p>
 
             <div className="glass-panel" style={{ padding: '1rem', marginBottom: '2.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -746,7 +746,7 @@ function StudentDashboard({ session, profile }) {
           <div className="fade-in-up">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem' }}>
               <div>
-                <h1 className="title">Talent Feed</h1>
+                <h1 className="dashboard-title">Find Teammates</h1>
                 <p className="subtitle">Collaborate on global projects. Apply to teams or recruit talent.</p>
               </div>
               <button className="btn btn-primary" onClick={() => setTeamAction(teamAction === 'create_listing' ? null : 'create_listing')}>
@@ -870,7 +870,7 @@ function StudentDashboard({ session, profile }) {
             <button className="btn btn-secondary" style={{ marginBottom: '2rem' }} onClick={() => setSelectedEvent(null)}>
               ← All Events
             </button>
-            <h1 className="title" style={{ fontSize: '2.5rem' }}>{selectedEvent.title}</h1>
+            <h1 className="dashboard-title" style={{ fontSize: '2.5rem' }}>{selectedEvent.title}</h1>
             <p className="subtitle">Choose how you want to participate in this event.</p>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginTop: '1rem' }}>
@@ -899,7 +899,7 @@ function StudentDashboard({ session, profile }) {
           <div className="fade-in-up">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3rem' }}>
               <div>
-                <h1 className="title">Inbox & Activity</h1>
+                <h1 className="dashboard-title">Platform Activity</h1>
                 <p className="subtitle">Manage your connections and collaboration requests.</p>
               </div>
               <button className="btn btn-secondary" onClick={fetchActivity}>
