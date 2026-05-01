@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, User, Calendar, PlusCircle, ArrowRight, Activity, Users, Shield, CheckCircle, XCircle } from 'lucide-react';
+import { 
+  LogOut, User, Calendar, PlusCircle, ArrowRight, Activity, 
+  Users, Shield, CheckCircle, XCircle, Star, Search, 
+  MapPin, Link as LinkIcon, Briefcase, Globe, GitBranch, FileText
+} from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 function StudentDashboard({ session, profile }) {
-  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('student_active_tab') || 'events'); // events, activity, teams, profile
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('student_active_tab') || 'events'); // events, discovery, find_member, activity, teams, profile
+
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -42,6 +47,32 @@ function StudentDashboard({ session, profile }) {
   const [formGithub, setFormGithub] = useState(profile?.github_url || '');
   const [saving, setSaving] = useState(false);
   const [skillSearch, setSkillSearch] = useState('');
+
+  // Find Member Form State
+  const [listingTeamName, setListingTeamName] = useState('');
+  const [hackathonName, setHackathonName] = useState('');
+  const [registrationLink, setRegistrationLink] = useState('');
+  const [mode, setMode] = useState('Online');
+  const [location, setLocation] = useState('');
+  const [rolesNeeded, setRolesNeeded] = useState('');
+  const [requiredSkills, setRequiredSkills] = useState('');
+  const [minExperience, setMinExperience] = useState('');
+  const [listingDescription, setListingDescription] = useState('');
+  const [isCreatingListing, setIsCreatingListing] = useState(false);
+
+  // Listings State
+  const [listings, setListings] = useState([]);
+  const [loadingListings, setLoadingListings] = useState(false);
+
+  // Discovery State
+  const [externalHackathons, setExternalHackathons] = useState([]);
+  const [favorites, setFavorites] = useState([]);
+  const [loadingDiscovery, setLoadingDiscovery] = useState(false);
+
+  // Profile Form State additions
+  const [formDevRole, setFormDevRole] = useState(profile?.dev_role || '');
+  const [formResume, setFormResume] = useState(profile?.resume_url || '');
+
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
 
@@ -51,7 +82,8 @@ function StudentDashboard({ session, profile }) {
     }
   };
 
-  const tabs = ['events', 'activity', 'teams', 'profile'];
+  const tabs = ['events', 'discovery', 'find_member', 'activity', 'teams', 'profile'];
+
 
   const handleTabChange = (tab) => {
     if (tab === activeTab) return;
@@ -91,12 +123,93 @@ function StudentDashboard({ session, profile }) {
       fetchEvents();
       setSelectedEvent(null);
       setTeamAction(null);
+    } else if (activeTab === 'discovery') {
+      fetchDiscovery();
+    } else if (activeTab === 'find_member') {
+      fetchListings();
     } else if (activeTab === 'activity') {
       fetchActivity();
     } else if (activeTab === 'teams') {
       fetchMyJoinedTeams();
     }
   }, [activeTab]);
+
+  const fetchDiscovery = async () => {
+    setLoadingDiscovery(true);
+    const { data: hackathons } = await supabase.from('external_hackathons').select('*').order('created_at', { ascending: false });
+    const { data: favs } = await supabase.from('favorites').select('hackathon_id').eq('user_id', profile.id);
+    
+    if (hackathons) setExternalHackathons(hackathons);
+    if (favs) setFavorites(favs.map(f => f.hackathon_id));
+    setLoadingDiscovery(false);
+  };
+
+  const fetchListings = async () => {
+    setLoadingListings(true);
+    const { data } = await supabase
+      .from('team_listings')
+      .select('*, profiles(full_name, dev_role, skills)')
+      .order('created_at', { ascending: false });
+    if (data) setListings(data);
+    setLoadingListings(false);
+  };
+
+  const toggleFavorite = async (hackathonId) => {
+    if (favorites.includes(hackathonId)) {
+      await supabase.from('favorites').delete().eq('user_id', profile.id).eq('hackathon_id', hackathonId);
+      setFavorites(favorites.filter(id => id !== hackathonId));
+    } else {
+      await supabase.from('favorites').insert([{ user_id: profile.id, hackathon_id: hackathonId }]);
+      setFavorites([...favorites, hackathonId]);
+    }
+  };
+
+  const handleCreateListing = async (e) => {
+    e.preventDefault();
+    setIsCreatingListing(true);
+    const { error } = await supabase.from('team_listings').insert([{
+      creator_id: profile.id,
+      team_name: listingTeamName,
+      hackathon_name,
+      registration_link,
+      mode,
+      location,
+      roles_needed: rolesNeeded.split(',').map(r => r.trim()).filter(r => r),
+      required_skills: requiredSkills.split(',').map(s => s.trim()).filter(s => s),
+      min_experience: minExperience,
+      description: listingDescription
+    }]);
+
+    if (!error) {
+      alert("Post created successfully!");
+      setListingTeamName('');
+      setHackathonName('');
+      setRegistrationLink('');
+      setLocation('');
+      setRolesNeeded('');
+      setRequiredSkills('');
+      setMinExperience('');
+      setListingDescription('');
+      fetchListings();
+      setTeamAction(null);
+    } else {
+      alert(error.message);
+    }
+    setIsCreatingListing(false);
+  };
+
+  const handleApplyToListing = async (listingId) => {
+    const { error } = await supabase.from('join_requests').insert([
+      { listing_id: listingId, applicant_id: profile.id, source: 'application' }
+    ]);
+    if (error) {
+      if (error.code === '23505') alert("You have already applied to this team.");
+      else alert(error.message);
+    } else {
+      alert("Application sent! The team lead will be notified.");
+    }
+  };
+
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -142,7 +255,9 @@ function StudentDashboard({ session, profile }) {
         skills: formSkills.split(',').map(s => s.trim()).filter(s => s),
         whatsapp_no: formWhatsapp,
         linkedin_url: formLinkedin,
-        github_url: formGithub
+        github_url: formGithub,
+        dev_role: formDevRole,
+        resume_url: formResume
       })
       .eq('id', profile.id);
     
@@ -196,12 +311,27 @@ function StudentDashboard({ session, profile }) {
       const teamIds = myTeams.map(t => t.id);
       const { data: incomingReqs } = await supabase
         .from('join_requests')
-        .select('*, teams(team_name, event_id, events(title)), profiles(full_name, skills, branch, email)')
+        .select('*, teams(team_name, event_id, events(title)), profiles(full_name, skills, branch, email, github_url, linkedin_url, resume_url)')
         .in('team_id', teamIds)
         .eq('status', 'pending')
         .eq('source', 'application');
       if (incomingReqs) setIncomingRequests(incomingReqs);
     }
+
+    // Also fetch requests for listings
+    const { data: myListings } = await supabase.from('team_listings').select('id').eq('creator_id', profile.id);
+    if (myListings && myListings.length > 0) {
+        const listingIds = myListings.map(l => l.id);
+        const { data: listingReqs } = await supabase
+            .from('join_requests')
+            .select('*, team_listings(team_name, hackathon_name), profiles(full_name, skills, branch, email, github_url, linkedin_url, resume_url)')
+            .in('listing_id', listingIds)
+            .eq('status', 'pending');
+        if (listingReqs) {
+            setIncomingRequests(prev => [...prev, ...listingReqs]);
+        }
+    }
+
 
     // 4. Fetch invitations I have sent (Recruitment check)
     const { data: sentInvites } = await supabase
@@ -367,6 +497,7 @@ function StudentDashboard({ session, profile }) {
 
   return (
     <div 
+      className="dashboard-root"
       style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -379,112 +510,129 @@ function StudentDashboard({ session, profile }) {
       </div>
 
       <header className="glass-header">
-        <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 2rem' }}>
-          <div className="nav-brand" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{ background: 'var(--accent)', color: 'white', padding: '0.4rem', borderRadius: '12px' }}>
-              <Users size={20} />
+        <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem 2rem' }}>
+          <div className="nav-brand" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+            <div style={{ background: 'var(--gradient-blue)', color: 'white', padding: '0.5rem', borderRadius: '14px', boxShadow: '0 8px 16px rgba(0, 122, 255, 0.3)' }}>
+              <Users size={22} />
             </div>
-            Mechatronics <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>Student</span>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Matchups</span>
+              <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent)', letterSpacing: '0.1em' }}>Student Console</span>
+            </div>
           </div>
           
-          <nav style={{ display: 'flex', gap: '1rem' }}>
-            <button 
-              className={`btn ${activeTab === 'events' ? 'btn-secondary' : ''}`} 
-              style={{ background: activeTab === 'events' ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', padding: '0.5rem 1rem' }}
-              onClick={() => setActiveTab('events')}
-            >
-              Events
-            </button>
-            <button 
-              className={`btn ${activeTab === 'activity' ? 'btn-secondary' : ''}`}
-              style={{ background: activeTab === 'activity' ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', padding: '0.5rem 1rem' }}
-              onClick={() => setActiveTab('activity')}
-            >
-              Activity
-            </button>
-            <button 
-              className={`btn ${activeTab === 'teams' ? 'btn-secondary' : ''}`}
-              style={{ background: activeTab === 'teams' ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', padding: '0.5rem 1rem' }}
-              onClick={() => setActiveTab('teams')}
-            >
-              My Teams
-            </button>
-            <button 
-              className={`btn ${activeTab === 'profile' ? 'btn-secondary' : ''}`}
-              style={{ background: activeTab === 'profile' ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', padding: '0.5rem 1rem' }}
-              onClick={() => setActiveTab('profile')}
-            >
-              Profile
-            </button>
+          <nav className="desktop-nav" style={{ display: 'flex', gap: '0.5rem' }}>
+            {tabs.map(tab => (
+              <div 
+                key={tab} 
+                className={`nav-item ${activeTab === tab ? 'active' : ''}`}
+                onClick={() => handleTabChange(tab)}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1).replace('_', ' ')}
+              </div>
+            ))}
           </nav>
 
-          <button className="btn" style={{ padding: '0.5rem', background: 'transparent' }} onClick={() => supabase.auth.signOut()}>
-            <LogOut size={20} color="var(--text-secondary)" />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+             <div className="glass-panel" style={{ padding: '0.4rem 1rem', borderRadius: '100px', display: 'flex', alignItems: 'center', gap: '0.6rem', border: '1px solid var(--glass-border)' }}>
+               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#34C759', boxShadow: '0 0 8px #34C759' }}></div>
+               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Live</span>
+             </div>
+             <button className="btn" style={{ padding: '0.5rem', background: 'rgba(255, 59, 48, 0.1)', color: '#FF3B30', borderRadius: '12px' }} onClick={() => supabase.auth.signOut()}>
+               <LogOut size={20} />
+             </button>
+          </div>
         </div>
       </header>
 
       {/* MOBILE BOTTOM NAV */}
       <div className="mobile-bottom-nav">
-        <div className={`mobile-nav-item ${activeTab === 'events' ? 'active' : ''}`} onClick={() => setActiveTab('events')}>
-          <Calendar size={20} />
+        <div className={`mobile-nav-item ${activeTab === 'events' ? 'active' : ''}`} onClick={() => handleTabChange('events')}>
+          <Calendar size={22} />
           <span>Events</span>
         </div>
-        <div className={`mobile-nav-item ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>
-          <Activity size={20} />
+        <div className={`mobile-nav-item ${activeTab === 'discovery' ? 'active' : ''}`} onClick={() => handleTabChange('discovery')}>
+          <Globe size={22} />
+          <span>Discovery</span>
+        </div>
+        <div className={`mobile-nav-item ${activeTab === 'find_member' ? 'active' : ''}`} onClick={() => handleTabChange('find_member')}>
+          <PlusCircle size={22} />
+          <span>Post</span>
+        </div>
+        <div className={`mobile-nav-item ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => handleTabChange('activity')}>
+          <Activity size={22} />
           <span>Activity</span>
         </div>
-        <div className={`mobile-nav-item ${activeTab === 'teams' ? 'active' : ''}`} onClick={() => setActiveTab('teams')}>
-          <Users size={20} />
-          <span>My Teams</span>
-        </div>
-        <div className={`mobile-nav-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>
-          <User size={20} />
+        <div className={`mobile-nav-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => handleTabChange('profile')}>
+          <User size={22} />
           <span>Profile</span>
         </div>
       </div>
 
-      <main className="container fade-in-up" style={{ flex: 1, padding: '3rem 2rem', maxWidth: '900px' }}>
+      <main className="container" style={{ flex: 1, padding: '3rem 2rem', maxWidth: '1000px' }}>
         
-        {/* EVENTS TAB */}
+        {/* HOME / EVENTS TAB */}
         {activeTab === 'events' && !selectedEvent && (
           <div className="fade-in-up">
-            <h1 className="title" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>Active Events</h1>
-            <p className="subtitle">Discover upcoming events, vote on polls, and build your dream team.</p>
+            <div style={{ marginBottom: '3rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                <span className="badge badge-blue">Welcome Back</span>
+              </div>
+              <h1 className="title">Hi, {profile?.full_name?.split(' ')[0] || 'Builder'}</h1>
+              <p className="subtitle">Ready to join your next dream team? Here's what's happening on campus.</p>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginTop: '2rem' }}>
+                <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Active Events</span>
+                  <span style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent)' }}>{events.length}</span>
+                </div>
+                <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>My Teams</span>
+                  <span style={{ fontSize: '2rem', fontWeight: 800, color: '#AF52DE' }}>{myJoinedTeams.length}</span>
+                </div>
+                <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Pending Requests</span>
+                  <span style={{ fontSize: '2rem', fontWeight: 800, color: '#FF9500' }}>{incomingRequests.length}</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>On-Campus Events</h2>
+              <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }} onClick={fetchEvents}>Refresh</button>
+            </div>
 
             {loading ? (
-              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Loading events...</div>
+              <div style={{ display: 'grid', gap: '1.5rem' }}>
+                {[1,2,3].map(i => <div key={i} className="glass-panel skeleton" style={{ height: '180px' }}></div>)}
+              </div>
             ) : events.length === 0 ? (
               <div className="glass-panel" style={{ padding: '4rem 2rem', textAlign: 'center' }}>
                 <Calendar size={48} color="var(--text-secondary)" style={{ marginBottom: '1rem', opacity: 0.5 }} />
-                <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>No active events</h3>
+                <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>No active events found</h3>
+                <p style={{ color: 'var(--text-secondary)' }}>Check back later for new hackathons and workshops.</p>
               </div>
             ) : (
               <div style={{ display: 'grid', gap: '1.5rem' }}>
                 {events.map((event) => (
-                  <div key={event.id} className="glass-panel fade-in-up" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div key={event.id} className="glass-panel fade-in-up" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
-                          <span style={{ 
-                            fontSize: '0.65rem', padding: '0.1rem 0.6rem', borderRadius: '100px', fontWeight: 700, textTransform: 'uppercase',
-                            background: event.type === 'poll' ? 'rgba(175, 82, 222, 0.1)' : event.type === 'message' ? 'rgba(52, 199, 89, 0.1)' : 'rgba(0, 113, 227, 0.1)',
-                            color: event.type === 'poll' ? '#AF52DE' : event.type === 'message' ? '#34C759' : 'var(--accent)'
-                          }}>
-                            {event.type}
-                          </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.8rem' }}>
+                          <span className={`badge ${event.type === 'poll' ? 'badge-purple' : 'badge-blue'}`}>{event.type}</span>
                           {event.expires_at && (
-                            <span style={{ fontSize: '0.65rem', color: '#ff3b30', fontWeight: 600 }}>Expires: {new Date(event.expires_at).toLocaleDateString()}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: '#FF3B30', fontWeight: 700 }}>
+                              <Activity size={14} /> Ends {new Date(event.expires_at).toLocaleDateString()}
+                            </div>
                           )}
                         </div>
-                        <h3 style={{ fontSize: '1.3rem', fontWeight: 700 }}>{event.title}</h3>
-                        <p style={{ color: 'var(--text-secondary)', marginTop: '0.25rem', fontSize: '0.95rem' }}>{event.description}</p>
+                        <h3 style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-0.03em' }}>{event.title}</h3>
+                        <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem', fontSize: '1rem', lineHeight: '1.6' }}>{event.description}</p>
                       </div>
                     </div>
 
-                    {/* POLL UI */}
                     {event.type === 'poll' && event.options && (
-                      <div style={{ display: 'grid', gap: '0.8rem', marginTop: '0.5rem' }}>
+                      <div style={{ display: 'grid', gap: '0.8rem', background: 'rgba(0,0,0,0.02)', padding: '1.5rem', borderRadius: '20px' }}>
                         {event.options.map((opt, i) => {
                           const voteCount = (event.votes || []).filter(v => v.option_text === opt).length;
                           const totalVotes = (event.votes || []).length;
@@ -494,22 +642,23 @@ function StudentDashboard({ session, profile }) {
                           return (
                             <button 
                               key={i} 
-                              className="glass-panel" 
+                              className="poll-option" 
                               style={{ 
-                                padding: '1rem', textAlign: 'left', border: '1px solid var(--glass-border)', 
+                                padding: '1.2rem', textAlign: 'left', border: '1px solid var(--glass-border)', 
                                 position: 'relative', overflow: 'hidden', cursor: hasVoted ? 'default' : 'pointer',
-                                background: 'rgba(255, 255, 255, 0.8)', color: '#1d1d1f',
-                                width: '100%', border: 'none', borderRadius: '12px'
+                                background: 'white', color: 'var(--text-primary)',
+                                width: '100%', borderRadius: '16px', transition: 'all 0.3s ease',
+                                boxShadow: 'var(--shadow-sm)'
                               }}
                               onClick={() => !hasVoted && handleVote(event.id, opt)}
                             >
                               <div style={{ 
                                 position: 'absolute', top: 0, left: 0, height: '100%', width: `${percent}%`, 
-                                background: 'rgba(0, 113, 227, 0.15)', transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)' 
+                                background: 'var(--accent-light)', transition: 'width 1s cubic-bezier(0.2, 0, 0, 1)' 
                               }}></div>
                               <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: '0.95rem', zIndex: 1 }}>
                                 <span>{opt}</span>
-                                <span style={{ color: 'var(--accent)' }}>{voteCount} votes ({Math.round(percent)}%)</span>
+                                <span style={{ color: 'var(--accent)' }}>{voteCount} ({Math.round(percent)}%)</span>
                               </div>
                             </button>
                           );
@@ -519,13 +668,13 @@ function StudentDashboard({ session, profile }) {
 
                     <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                       {event.know_more_url && (
-                        <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} onClick={() => window.open(event.know_more_url, '_blank')}>
-                          Learn More
+                        <button className="btn btn-secondary" onClick={() => window.open(event.know_more_url, '_blank')}>
+                          Details <ArrowRight size={18} />
                         </button>
                       )}
                       {event.is_team_joining_enabled && (
-                        <button className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} onClick={() => handleSelectEvent(event)}>
-                          {myTeamForEvent?.event_id === event.id ? 'Manage Team' : 'Join a Team'} <ArrowRight size={16} />
+                        <button className="btn btn-primary" onClick={() => handleSelectEvent(event)}>
+                          {myTeamForEvent?.event_id === event.id ? 'Manage Team' : 'Build a Team'}
                         </button>
                       )}
                     </div>
@@ -536,428 +685,378 @@ function StudentDashboard({ session, profile }) {
           </div>
         )}
 
-        {/* TEAM MATCHMAKING (Level 1: Select Option) */}
-        {activeTab === 'events' && selectedEvent && !teamAction && (
+        {/* DISCOVERY TAB */}
+        {activeTab === 'discovery' && (
           <div className="fade-in-up">
-            <button className="btn btn-secondary" style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', marginBottom: '1rem' }} onClick={() => setSelectedEvent(null)}>
-              ← Back to Events
-            </button>
-            <h1 className="title" style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>{selectedEvent.title} Teams</h1>
-            <p className="subtitle">Would you like to create your own team and invite members, or join an existing one?</p>
-            
-            <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-              <div className="glass-panel" style={{ flex: 1, padding: '2rem', textAlign: 'center', cursor: 'pointer' }} onClick={() => setTeamAction('create')}>
-                <Shield size={40} color="var(--accent)" style={{ marginBottom: '1rem' }} />
-                <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>Make a New Team</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Define your requirements and recruit specific roles.</p>
-              </div>
-              <div className="glass-panel" style={{ flex: 1, padding: '2rem', textAlign: 'center', cursor: 'pointer' }} onClick={loadExistingTeams}>
-                <Users size={40} color="var(--accent)" style={{ marginBottom: '1rem' }} />
-                <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>Join Existing Team</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Browse active teams and request to join them.</p>
-              </div>
-            </div>
-          </div>
-        )}
+            <h1 className="title">Global Explorer</h1>
+            <p className="subtitle">Curated hackathons and opportunities from around the web.</p>
 
-        {/* TEAM MATCHMAKING (Level 2: Create Team / Manage Team) */}
-        {activeTab === 'events' && selectedEvent && teamAction === 'create' && (
-          <div className="fade-in-up">
-            <button className="btn btn-secondary" style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', marginBottom: '1.5rem' }} onClick={() => setTeamAction(null)}>
-              ← Back Options
-            </button>
-            
-            <div className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem' }}>
-              <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>{myTeamForEvent ? 'Edit Team Details' : 'Make a New Team'}</h2>
-              <form onSubmit={handleCreateTeam}>
-                <div className="input-group">
-                  <label className="input-label">Team Name</label>
-                  <input type="text" className="glass-input" required value={teamName} onChange={(e)=>setTeamName(e.target.value)} />
-                </div>
-                <div className="input-group">
-                  <label className="input-label">Requirements (e.g., Need 1 Frontend, Female member preferred)</label>
-                  <textarea className="glass-input" rows="4" required value={teamRequirements} onChange={(e)=>setTeamRequirements(e.target.value)}></textarea>
-                </div>
-                <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>{myTeamForEvent ? 'Update Team Details' : 'Create Team & Publish Request'}</button>
-              </form>
+            <div className="glass-panel" style={{ padding: '1rem', marginBottom: '2.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <Search size={20} color="var(--text-secondary)" />
+              <input type="text" className="glass-input" style={{ border: 'none', background: 'transparent', backdropFilter: 'none', padding: '0.5rem' }} placeholder="Search global hackathons..." />
             </div>
 
-            {myTeamForEvent && (
-              <div className="fade-in-up">
-                <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Recruit Students</h2>
-                <p className="subtitle" style={{ marginBottom: '1.5rem' }}>Invite students to join your team. They will see your request in their activity tab.</p>
-                
-                <div className="input-group" style={{ marginBottom: '1.5rem' }}>
-                  <input 
-                    type="text" 
-                    className="glass-input" 
-                    placeholder="🔍 Search students by name or skills..." 
-                    value={studentSearch}
-                    onChange={(e) => setStudentSearch(e.target.value)}
-                  />
-                </div>
-
-                <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
-                  {availableStudents
-                    .filter(s => 
-                      !studentSearch || 
-                      s.full_name?.toLowerCase().includes(studentSearch.toLowerCase()) || 
-                      s.skills?.some(skill => skill.toLowerCase().includes(studentSearch.toLowerCase()))
-                    )
-                    .map(student => {
-                      const alreadyInvited = sentInvitations.includes(student.id);
-                      return (
-                        <div key={student.id} className="glass-panel" style={{ padding: '1.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div style={{ flex: 1 }}>
-                            <h4 style={{ fontWeight: 700, fontSize: '1rem' }}>{student.full_name}</h4>
-                            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{student.branch}</p>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.6rem' }}>
-                              {student.skills?.slice(0, 3).map((skill, idx) => (
-                                <span key={idx} style={{ fontSize: '0.6rem', padding: '0.1rem 0.5rem', background: 'rgba(0,113,227,0.1)', color: 'var(--accent)', borderRadius: '100px', fontWeight: 600 }}>{skill}</span>
-                              ))}
-                            </div>
-                          </div>
-                          <button 
-                            className="btn btn-primary" 
-                            style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', marginLeft: '1rem' }}
-                            onClick={() => handleInviteStudent(student.id)}
-                            disabled={invitingId === student.id || alreadyInvited}
-                          >
-                            {invitingId === student.id ? '...' : alreadyInvited ? 'Sent' : 'Invite'}
-                          </button>
-                        </div>
-                      );
-                    })}
-                </div>
-                {availableStudents.length === 0 && <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>No other students found.</p>}
+            {loadingDiscovery ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                {[1,2,3,4].map(i => <div key={i} className="glass-panel skeleton" style={{ height: '350px' }}></div>)}
               </div>
-            )}
-          </div>
-        )}
-
-        {/* TEAM MATCHMAKING (Level 2: Join Existing) */}
-        {activeTab === 'events' && selectedEvent && teamAction === 'join' && (
-          <div className="fade-in-up">
-            <button className="btn btn-secondary" style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', marginBottom: '1.5rem' }} onClick={() => setTeamAction(null)}>
-              ← Back Options
-            </button>
-            <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Existing Teams</h2>
-            
-            {/* Search Bar for Teams */}
-            <div className="input-group" style={{ marginBottom: '2rem' }}>
-              <input 
-                type="text" 
-                className="glass-input" 
-                placeholder="🔍 Search by skill or requirement (e.g. React, Kotlin)..." 
-                value={skillSearch}
-                onChange={(e) => setSkillSearch(e.target.value)}
-              />
-            </div>
-            
-            {existingTeams.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)' }}>No teams created yet for this event.</p>
             ) : (
-              <div style={{ display: 'grid', gap: '1.5rem' }}>
-                {existingTeams
-                  .filter(team => 
-                    !skillSearch || 
-                    team.requirements?.toLowerCase().includes(skillSearch.toLowerCase()) ||
-                    team.team_name.toLowerCase().includes(skillSearch.toLowerCase())
-                  )
-                  .map(team => {
-                    const hasRequested = myRequests.some(r => r.team_id === team.id && r.status === 'pending');
-                    return (
-                      <div key={team.id} className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div style={{ flex: 1 }}>
-                            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <span>{team.icon_url || '🚀'}</span> {team.team_name}
-                            </h3>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--accent)', fontWeight: 600, marginTop: '0.2rem' }}>
-                              Created by: {team.profiles?.full_name || 'Anonymous'}
-                            </p>
-                          </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 700, background: 'rgba(0,113,227,0.1)', color: 'var(--accent)', padding: '0.2rem 0.6rem', borderRadius: '100px' }}>
-                              {team.team_members?.length || 0} MEMBERS
-                            </span>
-                          </div>
-                        </div>
-
-                        <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-                          <p style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>Looking For</p>
-                          <p style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>{team.requirements}</p>
-                        </div>
-
+              <div style={{ display: 'grid', gap: '1.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+                {externalHackathons.map((hack) => (
+                  <div key={hack.id} className="glass-panel fade-in-up" style={{ padding: '0', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ position: 'relative' }}>
+                      <img src={hack.image_url || 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&q=80&w=1000'} alt={hack.title} style={{ width: '100%', height: '180px', objectFit: 'cover' }} />
+                      <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
                         <button 
-                          className="btn btn-primary" 
-                          style={{ width: '100%', marginTop: '0.5rem' }} 
-                          onClick={() => handleRequestJoin(team.id)}
-                          disabled={hasRequested}
+                          className="btn" 
+                          onClick={() => toggleFavorite(hack.id)}
+                          style={{ 
+                            width: '40px', height: '40px', padding: '0', borderRadius: '50%',
+                            background: favorites.includes(hack.id) ? '#FF2D55' : 'rgba(255,255,255,0.8)',
+                            color: favorites.includes(hack.id) ? 'white' : '#FF2D55',
+                            backdropFilter: 'blur(10px)', border: 'none'
+                          }}
                         >
-                          {hasRequested ? 'Request Sent' : 'Request to Join'}
+                          <Star size={18} fill={favorites.includes(hack.id) ? 'currentColor' : 'none'} />
                         </button>
                       </div>
-                    );
-                  })}
+                      <div style={{ position: 'absolute', bottom: '1rem', left: '1rem' }}>
+                        <span className="badge badge-blue" style={{ background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)' }}>{hack.source || 'Hackathon'}</span>
+                      </div>
+                    </div>
+                    <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                      <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '0.5rem' }}>{hack.title}</h3>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', flex: 1, lineLineHeight: '1.6' }}>{hack.description?.slice(0, 100)}...</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem', color: 'var(--accent)', fontWeight: 700, fontSize: '0.85rem' }}>
+                        <Calendar size={14} /> {hack.date}
+                      </div>
+                      <button className="btn btn-primary" style={{ width: '100%', marginTop: '1.5rem' }} onClick={() => window.open(hack.link, '_blank')}>
+                        Visit Official Site <Globe size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* FIND MEMBER TAB */}
+        {activeTab === 'find_member' && (
+          <div className="fade-in-up">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem' }}>
+              <div>
+                <h1 className="title">Talent Feed</h1>
+                <p className="subtitle">Collaborate on global projects. Apply to teams or recruit talent.</p>
+              </div>
+              <button className="btn btn-primary" onClick={() => setTeamAction(teamAction === 'create_listing' ? null : 'create_listing')}>
+                {teamAction === 'create_listing' ? <><XCircle size={18} /> Close Form</> : <><PlusCircle size={18} /> New Listing</>}
+              </button>
+            </div>
+
+            {teamAction === 'create_listing' && (
+              <div className="glass-panel fade-in-up" style={{ padding: '2.5rem', marginBottom: '4rem', border: '2px solid var(--accent)' }}>
+                <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '2rem' }}>Create a Recruitment Post</h2>
+                <form onSubmit={handleCreateListing} style={{ display: 'grid', gap: '1.5rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                    <div className="input-group">
+                      <label className="input-label">Project / Team Name</label>
+                      <input type="text" className="glass-input" placeholder="e.g. Nexus Core" value={listingTeamName} onChange={(e)=>setListingTeamName(e.target.value)} required />
+                    </div>
+                    <div className="input-group">
+                      <label className="input-label">Hackathon Target</label>
+                      <input type="text" className="glass-input" placeholder="e.g. ETHIndia 2026" value={hackathonName} onChange={(e)=>setHackathonName(e.target.value)} required />
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+                    <div className="input-group">
+                      <label className="input-label">Mode</label>
+                      <select className="glass-input" value={mode} onChange={(e)=>setMode(e.target.value)}>
+                        <option value="Online">🌐 Remote / Online</option>
+                        <option value="Offline">📍 In-Person / Offline</option>
+                      </select>
+                    </div>
+                    <div className="input-group">
+                      <label className="input-label">Roles Needed</label>
+                      <input type="text" className="glass-input" placeholder="Frontend, UI Designer, etc." value={rolesNeeded} onChange={(e)=>setRolesNeeded(e.target.value)} required />
+                    </div>
+                    <div className="input-group">
+                        <label className="input-label">Exp. Level</label>
+                        <input type="text" className="glass-input" placeholder="Beginner, Pro, etc." value={minExperience} onChange={(e)=>setMinExperience(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">Mission Statement</label>
+                    <textarea className="glass-input" rows="4" placeholder="What are you building and why should people join you?" value={listingDescription} onChange={(e)=>setListingDescription(e.target.value)} required></textarea>
+                  </div>
+                  <button type="submit" className="btn btn-primary" style={{ padding: '1.2rem' }} disabled={isCreatingListing}>
+                    {isCreatingListing ? 'Publishing...' : 'Publish to Feed'}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {loadingListings ? (
+              <div style={{ display: 'grid', gap: '1.5rem' }}>
+                {[1,2].map(i => <div key={i} className="glass-panel skeleton" style={{ height: '300px' }}></div>)}
+              </div>
+            ) : listings.length === 0 ? (
+              <div className="glass-panel" style={{ padding: '4rem 2rem', textAlign: 'center' }}>
+                <Users size={48} color="var(--text-secondary)" style={{ marginBottom: '1rem', opacity: 0.5 }} />
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 800 }}>No listings yet</h3>
+                <p style={{ color: 'var(--text-secondary)' }}>Be the first to start a movement.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: '2rem' }}>
+                {listings.map((listing) => (
+                  <div key={listing.id} className="glass-panel fade-in-up" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.8rem' }}>
+                          <span className={`badge ${listing.mode === 'Online' ? 'badge-blue' : 'badge-green'}`}>{listing.mode}</span>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Posted {new Date(listing.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <h3 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.03em' }}>{listing.team_name}</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent)', fontWeight: 700, fontSize: '1.1rem', marginTop: '0.2rem' }}>
+                           <Star size={18} fill="currentColor" /> {listing.hackathon_name}
+                        </div>
+                      </div>
+                      <button className="btn btn-primary" style={{ padding: '1rem 2rem' }} onClick={() => handleApplyToListing(listing.id)}>Apply Now</button>
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                      <div style={{ background: 'var(--accent-light)', padding: '1.2rem', borderRadius: '18px', border: '1px solid rgba(0,122,255,0.1)' }}>
+                        <p style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Required Expertise</p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          {listing.required_skills?.map((s, i) => <span key={i} style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>{s}</span>)}
+                        </div>
+                      </div>
+                      <div style={{ background: 'rgba(175, 82, 222, 0.08)', padding: '1.2rem', borderRadius: '18px', border: '1px solid rgba(175, 82, 222, 0.1)' }}>
+                        <p style={{ fontSize: '0.7rem', color: '#AF52DE', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Open Roles</p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          {listing.roles_needed?.map((r, i) => <span key={i} style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>{r}</span>)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', lineHeight: '1.7' }}>{listing.description}</p>
+                    
+                    <div style={{ marginTop: '0.5rem', padding: '1.5rem', background: 'rgba(0,0,0,0.02)', borderRadius: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div style={{ width: '50px', height: '50px', borderRadius: '16px', background: 'var(--gradient-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: '1.2rem', boxShadow: 'var(--shadow-sm)' }}>
+                          {listing.profiles?.full_name?.charAt(0)}
+                        </div>
+                        <div>
+                          <p style={{ fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.01em' }}>{listing.profiles?.full_name}</p>
+                          <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{listing.profiles?.dev_role || 'Team Lead'}</p>
+                        </div>
+                      </div>
+                      {listing.registration_link && (
+                        <button className="btn btn-secondary" style={{ padding: '0.6rem 1.2rem', fontSize: '0.85rem' }} onClick={() => window.open(listing.registration_link, '_blank')}>
+                           Official Registration <LinkIcon size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TEAM SELECTION VIEW (Within Events) */}
+        {activeTab === 'events' && selectedEvent && !teamAction && (
+          <div className="fade-in-up">
+            <button className="btn btn-secondary" style={{ marginBottom: '2rem' }} onClick={() => setSelectedEvent(null)}>
+              ← All Events
+            </button>
+            <h1 className="title" style={{ fontSize: '2.5rem' }}>{selectedEvent.title}</h1>
+            <p className="subtitle">Choose how you want to participate in this event.</p>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginTop: '1rem' }}>
+              <div className="glass-panel" style={{ padding: '3rem 2rem', textAlign: 'center', cursor: 'pointer' }} onClick={() => setTeamAction('create')}>
+                <div style={{ width: '80px', height: '80px', borderRadius: '24px', background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem' }}>
+                   <Shield size={36} />
+                </div>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1rem' }}>I'm a Team Lead</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: '1.6' }}>Create a team, define your project, and recruit specific roles from our student database.</p>
+                <button className="btn btn-primary" style={{ marginTop: '2rem', width: '100%' }}>Create My Team</button>
+              </div>
+              <div className="glass-panel" style={{ padding: '3rem 2rem', textAlign: 'center', cursor: 'pointer' }} onClick={loadExistingTeams}>
+                <div style={{ width: '80px', height: '80px', borderRadius: '24px', background: 'rgba(52, 199, 89, 0.1)', color: '#34C759', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem' }}>
+                   <Users size={36} />
+                </div>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1rem' }}>I'm Looking to Join</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: '1.6' }}>Browse active teams created by other students and request to join their mission.</p>
+                <button className="btn btn-secondary" style={{ marginTop: '2rem', width: '100%' }}>Browse Teams</button>
+              </div>
+            </div>
           </div>
         )}
 
         {/* ACTIVITY TAB */}
         {activeTab === 'activity' && (
           <div className="fade-in-up">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3rem' }}>
               <div>
-                <h1 className="title" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>My Activity</h1>
-                <p className="subtitle" style={{ marginBottom: 0 }}>Manage your sent requests and approve incoming ones.</p>
+                <h1 className="title">Inbox & Activity</h1>
+                <p className="subtitle">Manage your connections and collaboration requests.</p>
               </div>
-              <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }} onClick={fetchActivity}>
-                Refresh List
+              <button className="btn btn-secondary" onClick={fetchActivity}>
+                 Sync Data <Activity size={16} />
               </button>
             </div>
             
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', flexWrap: 'wrap' }}>
-              <button 
-                className={`btn ${activityTab === 'requested' ? 'btn-primary' : 'btn-secondary'}`} 
-                style={{ padding: '0.5rem 0.8rem', fontSize: '0.8rem' }}
-                onClick={() => setActivityTab('requested')}
-              >
-                Applications ({myRequests.length})
+            <div className="tab-bar">
+              <button className={`tab-btn ${activityTab === 'requested' ? 'active' : ''}`} onClick={() => setActivityTab('requested')}>
+                Sent ({myRequests.length})
               </button>
-              <button 
-                className={`btn ${activityTab === 'invitations' ? 'btn-primary' : 'btn-secondary'}`} 
-                style={{ padding: '0.5rem 0.8rem', fontSize: '0.8rem' }}
-                onClick={() => setActivityTab('invitations')}
-              >
-                Invitations ({(myInvitations || []).filter(i=>i.status==='pending').length})
+              <button className={`tab-btn ${activityTab === 'invitations' ? 'active' : ''}`} onClick={() => setActivityTab('invitations')}>
+                Invites ({(myInvitations || []).filter(i=>i.status==='pending').length})
               </button>
-              <button 
-                className={`btn ${activityTab === 'approve' ? 'btn-primary' : 'btn-secondary'}`} 
-                style={{ padding: '0.5rem 0.8rem', fontSize: '0.8rem' }}
-                onClick={() => setActivityTab('approve')}
-              >
-                Team Requests ({incomingRequests.length})
+              <button className={`tab-btn ${activityTab === 'approve' ? 'active' : ''}`} onClick={() => setActivityTab('approve')}>
+                Approvals ({incomingRequests.length})
               </button>
-              <button 
-                className={`btn ${activityTab === 'global' ? 'btn-primary' : 'btn-secondary'}`} 
-                style={{ padding: '0.5rem 0.8rem', fontSize: '0.8rem' }}
-                onClick={() => setActivityTab('global')}
-              >
-                Global
+              <button className={`tab-btn ${activityTab === 'global' ? 'active' : ''}`} onClick={() => setActivityTab('global')}>
+                System Log
               </button>
             </div>
-            {activityTab === 'invitations' && (
-              <div className="fade-in-up">
-                {myInvitations.length === 0 ? (
-                  <p style={{ color: 'var(--text-secondary)' }}>No invitations received yet.</p>
-                ) : (
+
+            <div style={{ marginTop: '2rem' }}>
+                {activityTab === 'requested' && (
                   <div style={{ display: 'grid', gap: '1rem' }}>
-                    {myInvitations.map(invite => (
-                      <div key={invite.id} className="glass-panel" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    {myRequests.length === 0 ? (
+                        <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No sent requests yet.</div>
+                    ) : myRequests.map(req => (
+                      <div key={req.id} className="glass-panel fade-in-up" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                          <p style={{ fontSize: '0.8rem', color: 'var(--accent)', fontWeight: 600 }}>TEAM INVITATION</p>
-                          <h3 style={{ fontSize: '1.2rem', fontWeight: 600 }}>{invite.teams?.team_name}</h3>
-                          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Leader: {invite.teams?.profiles?.full_name}</p>
-                          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>Event: {invite.teams?.events?.title}</p>
+                          <p style={{ fontWeight: 800, fontSize: '1.1rem' }}>{req.teams?.team_name}</p>
+                          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{req.teams?.events?.title}</p>
                         </div>
-                        <div style={{ display: 'flex', gap: '0.8rem' }}>
-                          {invite.status === 'pending' ? (
-                            <>
-                              <button className="btn btn-primary" style={{ padding: '0.5rem 1.2rem', background: '#34C759' }} onClick={() => handleRequestResponse(invite.id, 'approved', profile.id, invite.team_id)}>Accept</button>
-                              <button className="btn btn-secondary" style={{ padding: '0.5rem 1.2rem', color: '#ff3b30' }} onClick={() => handleRequestResponse(invite.id, 'rejected', profile.id, invite.team_id)}>Decline</button>
-                            </>
-                          ) : (
-                            <span style={{ color: invite.status === 'approved' ? '#34C759' : '#ff3b30', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.8rem' }}>{invite.status}</span>
-                          )}
+                        <span className={`badge ${req.status === 'approved' ? 'badge-green' : req.status === 'rejected' ? 'badge-red' : 'badge-blue'}`}>
+                          {req.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {activityTab === 'approve' && (
+                  <div style={{ display: 'grid', gap: '1.5rem' }}>
+                    {incomingRequests.length === 0 ? (
+                        <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No pending approvals.</div>
+                    ) : incomingRequests.map(req => (
+                      <div key={req.id} className="glass-panel fade-in-up" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                <div style={{ width: '60px', height: '60px', borderRadius: '18px', background: 'var(--gradient-purple)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.5rem' }}>
+                                    {req.profiles?.full_name?.charAt(0)}
+                                </div>
+                                <div>
+                                    <h3 style={{ fontSize: '1.3rem', fontWeight: 800 }}>{req.profiles?.full_name}</h3>
+                                    <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Applying for: {req.teams?.team_name || req.team_listings?.team_name}</p>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <button className="btn btn-primary" style={{ background: '#34C759', boxShadow: '0 8px 16px rgba(52, 199, 89, 0.3)' }} onClick={() => handleRequestResponse(req.id, 'approved', req.applicant_id, req.team_id)}>Approve</button>
+                                <button className="btn btn-secondary" style={{ color: '#FF3B30' }} onClick={() => handleRequestResponse(req.id, 'rejected', req.applicant_id, req.team_id)}>Reject</button>
+                            </div>
+                        </div>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.2rem' }}>
+                            <div style={{ background: 'var(--accent-light)', padding: '1.2rem', borderRadius: '20px' }}>
+                                <p style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.8rem' }}>Tech Stack</p>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                    {req.profiles?.skills?.map((s, i) => <span key={i} className="badge badge-blue" style={{ fontSize: '0.7rem' }}>{s}</span>)}
+                                </div>
+                            </div>
+                            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '1.2rem', borderRadius: '20px' }}>
+                                <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.8rem' }}>Professional Links</p>
+                                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                                    {req.profiles?.github_url && <a href={req.profiles.github_url} target="_blank" rel="noreferrer" className="nav-item" style={{ padding: '0.4rem' }}><GitBranch size={18} /></a>}
+                                    {req.profiles?.linkedin_url && <a href={req.profiles.linkedin_url} target="_blank" rel="noreferrer" className="nav-item" style={{ padding: '0.4rem' }}><Globe size={18} /></a>}
+                                    {req.profiles?.resume_url && <a href={req.profiles.resume_url} target="_blank" rel="noreferrer" className="nav-item" style={{ padding: '0.4rem' }}><FileText size={18} /></a>}
+                                </div>
+                            </div>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
-              </div>
-            )}
-            {activityTab === 'global' && (
-              <div style={{ display: 'grid', gap: '1rem' }}>
-                {allRequests.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>No activity on the platform yet.</p> : null}
-                {allRequests.map(req => (
-                  <div key={req.id} className="glass-panel" style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <p style={{ fontWeight: 600 }}>{req.profiles?.full_name || 'Anonymous'} applied to {req.teams?.team_name}</p>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Event: {req.teams?.events?.title}</p>
-                    </div>
-                    <div>
-                      <span style={{ 
-                        padding: '0.3rem 0.8rem', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 600,
-                        background: req.status === 'approved' ? 'rgba(52, 199, 89, 0.2)' : req.status === 'rejected' ? 'rgba(255, 59, 48, 0.2)' : 'rgba(255, 149, 0, 0.2)',
-                        color: req.status === 'approved' ? '#34C759' : req.status === 'rejected' ? '#ff3b30' : '#ff9500'
-                      }}>
-                        {req.status.toUpperCase()}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {activityTab === 'requested' && (
-              <div style={{ display: 'grid', gap: '1rem' }}>
-                {myRequests.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>You haven't requested to join any teams yet.</p> : null}
-                {myRequests.map(req => (
-                  <div key={req.id} className="glass-panel" style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <p style={{ fontWeight: 600 }}>{req.teams?.team_name}</p>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Event: {req.teams?.events?.title}</p>
-                    </div>
-                    <div>
-                      <span style={{ 
-                        padding: '0.3rem 0.8rem', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 600,
-                        background: req.status === 'approved' ? 'rgba(52, 199, 89, 0.2)' : req.status === 'rejected' ? 'rgba(255, 59, 48, 0.2)' : 'rgba(255, 149, 0, 0.2)',
-                        color: req.status === 'approved' ? '#34C759' : req.status === 'rejected' ? '#ff3b30' : '#ff9500'
-                      }}>
-                        {req.status.toUpperCase()}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {activityTab === 'approve' && (
-              <div style={{ display: 'grid', gap: '1rem' }}>
-                {incomingRequests.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>No pending requests for your teams.</p> : null}
-                {incomingRequests.map(req => (
-                  <div key={req.id} className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.8rem' }}>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--accent)', fontWeight: 600, textTransform: 'uppercase' }}>{req.teams?.team_name}</p>
-                      <p style={{ fontWeight: 600, fontSize: '1.2rem', marginTop: '0.2rem' }}>{req.profiles?.full_name}</p>
-                      <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{req.profiles?.email}</p>
-                    </div>
-                    <div>
-                      <p style={{ fontSize: '0.9rem' }}><strong>Branch/Skills:</strong> {req.profiles?.skills?.join(', ') || req.profiles?.branch || 'Not specified'}</p>
-                    </div>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-                      <button className="btn btn-primary" style={{ padding: '0.5rem 1rem', flex: 1, background: '#34C759', boxShadow: '0 4px 14px rgba(52, 199, 89, 0.4)' }} onClick={() => handleRequestResponse(req.id, 'approved', req.applicant_id, req.team_id)}>
-                        <CheckCircle size={18} /> Approve
-                      </button>
-                      <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem', flex: 1, color: '#ff3b30' }} onClick={() => handleRequestResponse(req.id, 'rejected', req.applicant_id, req.team_id)}>
-                        <XCircle size={18} /> Reject
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* MY TEAMS TAB */}
-        {activeTab === 'teams' && (
-          <div className="fade-in-up">
-            <h1 className="title" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>My Teams</h1>
-            <p className="subtitle">View your current teams and connect with your teammates.</p>
-            
-            {myJoinedTeams.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)' }}>You haven't joined any teams yet.</p>
-            ) : (
-              <div style={{ display: 'grid', gap: '1.5rem' }}>
-                {myJoinedTeams.map(team => (
-                  <div key={team.id} className="glass-panel" style={{ padding: '1.5rem' }}>
-                    <h3 style={{ fontSize: '1.3rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      {team.icon_url} {team.team_name}
-                    </h3>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--accent)', marginTop: '0.2rem' }}>Event: {team.events?.title}</p>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>Created by: {team.profiles?.full_name}</p>
-                    
-                    <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--glass-border)' }}>
-                      <p style={{ fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Teammates</p>
-                      <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
-                        {team.team_members?.map((member, idx) => (
-                          <div key={idx} className="glass-panel" style={{ padding: '1.2rem', background: 'rgba(255,255,255,0.03)', position: 'relative', overflow: 'hidden' }}>
-                            <div style={{ position: 'absolute', top: 0, right: 0, width: '4px', height: '100%', background: 'var(--accent)' }}></div>
-                            <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              {member.profiles?.full_name} 
-                              {member.profiles?.id === team.creator_id && (
-                                <span style={{ fontSize: '0.6rem', padding: '0.1rem 0.4rem', background: '#ff9500', color: 'white', borderRadius: '4px', fontWeight: 800 }}>LEADER</span>
-                              )}
-                              {member.profiles?.id === profile.id && <span style={{ color: 'var(--accent)', fontSize: '0.8rem' }}>(You)</span>}
-                            </h4>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.8rem' }}>{member.profiles?.email}</p>
-                            
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1rem' }}>
-                              {member.profiles?.skills?.map((skill, sIdx) => (
-                                <span key={sIdx} style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem', background: 'rgba(0,113,227,0.1)', color: 'var(--accent)', borderRadius: '100px', fontWeight: 600 }}>
-                                  {skill}
-                                </span>
-                              ))}
-                            </div>
-
-                            <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid var(--glass-border)', paddingTop: '0.8rem' }}>
-                              {member.profiles?.whatsapp_no && (
-                                <a href={`https://wa.me/${member.profiles.whatsapp_no.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" title="WhatsApp" style={{ color: '#34C759', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', textDecoration: 'none' }}>
-                                  <Activity size={14} /> WhatsApp
-                                </a>
-                              )}
-                              {member.profiles?.github_url && (
-                                <a href={member.profiles.github_url} target="_blank" rel="noreferrer" title="GitHub" style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', textDecoration: 'none' }}>
-                                  <PlusCircle size={14} /> GitHub
-                                </a>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            </div>
           </div>
         )}
 
         {/* PROFILE TAB */}
         {activeTab === 'profile' && (
           <div className="fade-in-up">
-            <h1 className="title" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>My Profile</h1>
-            <p className="subtitle">Manage your personal details and skills.</p>
-            <div className="glass-panel" style={{ padding: '2rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+            <h1 className="title">My Profile</h1>
+            <p className="subtitle">Manage your professional identity and public bio.</p>
+            
+            <div className="glass-panel" style={{ padding: '3rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', marginBottom: '3rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '2rem' }}>
+                 <div style={{ width: '100px', height: '100px', borderRadius: '32px', background: 'var(--gradient-blue)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', fontWeight: 800, boxShadow: 'var(--shadow-md)' }}>
+                   {profile?.full_name?.charAt(0)}
+                 </div>
+                 <div>
+                    <h2 style={{ fontSize: '1.8rem', fontWeight: 800 }}>{profile?.full_name}</h2>
+                    <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{profile?.dev_role || 'Mechatronics Engineer'}</p>
+                    <div className="badge badge-green" style={{ marginTop: '0.5rem' }}>Verified Account</div>
+                 </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
                 <div className="input-group">
                   <label className="input-label">Full Name</label>
                   <input type="text" className="glass-input" value={formName} onChange={(e) => setFormName(e.target.value)} />
                 </div>
                 <div className="input-group">
                   <label className="input-label">WhatsApp Number</label>
-                  <input type="tel" className="glass-input" value={formWhatsapp} onChange={(e) => setFormWhatsapp(e.target.value)} placeholder="+91..." />
-                </div>
-              </div>
-              <div className="input-group">
-                <label className="input-label">Email Address</label>
-                <input type="text" className="glass-input" disabled value={session.user.email} style={{ opacity: 0.7 }} />
-              </div>
-              <div className="input-group">
-                <label className="input-label">Branch & Skills (Comma separated)</label>
-                <input type="text" className="glass-input" placeholder="e.g. Computer Science, React, UI/UX" value={formSkills} onChange={(e) => setFormSkills(e.target.value)} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                <div className="input-group">
-                  <label className="input-label">LinkedIn URL</label>
-                  <input type="url" className="glass-input" value={formLinkedin} onChange={(e) => setFormLinkedin(e.target.value)} placeholder="https://linkedin.com/in/..." />
+                  <input type="tel" className="glass-input" value={formWhatsapp} onChange={(e)=>setFormWhatsapp(e.target.value)} placeholder="+91..." />
                 </div>
                 <div className="input-group">
-                  <label className="input-label">GitHub URL</label>
-                  <input type="url" className="glass-input" value={formGithub} onChange={(e) => setFormGithub(e.target.value)} placeholder="https://github.com/..." />
+                  <label className="input-label">Dev Role (e.g. Fullstack Developer)</label>
+                  <input type="text" className="glass-input" value={formDevRole} onChange={(e)=>setFormDevRole(e.target.value)} />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">Technical Skills (comma separated)</label>
+                  <input type="text" className="glass-input" value={formSkills} onChange={(e)=>setFormSkills(e.target.value)} />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">LinkedIn Profile</label>
+                  <div style={{ position: 'relative' }}>
+                    <Globe size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                    <input type="url" className="glass-input" style={{ paddingLeft: '3rem' }} value={formLinkedin} onChange={(e)=>setFormLinkedin(e.target.value)} placeholder="https://..." />
+                  </div>
+                </div>
+                <div className="input-group">
+                  <label className="input-label">GitHub Profile</label>
+                  <div style={{ position: 'relative' }}>
+                    <GitBranch size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                    <input type="url" className="glass-input" style={{ paddingLeft: '3rem' }} value={formGithub} onChange={(e)=>setFormGithub(e.target.value)} placeholder="https://..." />
+                  </div>
+                </div>
+                <div className="input-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="input-label">Resume Link (PDF / G-Drive)</label>
+                  <div style={{ position: 'relative' }}>
+                    <FileText size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                    <input type="url" className="glass-input" style={{ paddingLeft: '3rem' }} value={formResume} onChange={(e)=>setFormResume(e.target.value)} placeholder="https://..." />
+                  </div>
                 </div>
               </div>
-              <button className="btn btn-primary" style={{ marginTop: '1rem' }} onClick={handleSaveProfile} disabled={saving}>
-                {saving ? 'Saving...' : 'Save Profile'}
+
+              <button className="btn btn-primary" style={{ width: '100%', marginTop: '2rem', padding: '1.2rem' }} onClick={handleSaveProfile} disabled={saving}>
+                {saving ? 'Syncing Profile...' : 'Save Professional Profile'}
               </button>
             </div>
           </div>
         )}
 
       </main>
+
+      <footer className="container" style={{ padding: '2rem', textAlign: 'center', opacity: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
+        &copy; 2026 DevMatchups Platform. Built for Excellence.
+      </footer>
     </div>
   );
 }

@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     linkedin_url TEXT,
     github_url TEXT,
     whatsapp_no TEXT,
+    dev_role TEXT, -- e.g., 'Frontend', 'Backend'
+    resume_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -227,4 +229,75 @@ CREATE POLICY "Broadcasts are viewable by everyone" ON public.broadcasts FOR SEL
 DROP POLICY IF EXISTS "Admins manage broadcasts" ON public.broadcasts;
 CREATE POLICY "Admins manage broadcasts" ON public.broadcasts FOR ALL USING (
   EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+-- ==========================================
+-- 5. NEW FEATURES: FIND MEMBER & DISCOVERY
+-- ==========================================
+
+-- TEAM LISTINGS (The "Find Member" posts)
+CREATE TABLE IF NOT EXISTS public.team_listings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    creator_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    team_name TEXT NOT NULL,
+    hackathon_name TEXT NOT NULL,
+    registration_link TEXT,
+    mode TEXT CHECK (mode IN ('Online', 'Offline')),
+    location TEXT,
+    roles_needed TEXT[],
+    required_skills TEXT[],
+    min_experience TEXT,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- EXTERNAL HACKATHONS
+CREATE TABLE IF NOT EXISTS public.external_hackathons (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    title TEXT NOT NULL,
+    description TEXT,
+    date TEXT,
+    link TEXT,
+    image_url TEXT,
+    source TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    UNIQUE(link)
+);
+
+-- FAVORITES
+CREATE TABLE IF NOT EXISTS public.favorites (
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    hackathon_id UUID REFERENCES public.external_hackathons(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    PRIMARY KEY (user_id, hackathon_id)
+);
+
+-- Update join_requests to support listings
+ALTER TABLE public.join_requests ADD COLUMN IF NOT EXISTS listing_id UUID REFERENCES public.team_listings(id) ON DELETE CASCADE;
+
+-- RLS for new tables
+ALTER TABLE public.team_listings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Team listings are viewable by everyone" ON public.team_listings;
+CREATE POLICY "Team listings are viewable by everyone" ON public.team_listings FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Users can create team listings" ON public.team_listings;
+CREATE POLICY "Users can create team listings" ON public.team_listings FOR INSERT WITH CHECK (auth.uid() = creator_id);
+DROP POLICY IF EXISTS "Creators can update their listings" ON public.team_listings;
+CREATE POLICY "Creators can update their listings" ON public.team_listings FOR UPDATE USING (auth.uid() = creator_id);
+DROP POLICY IF EXISTS "Creators can delete their listings" ON public.team_listings;
+CREATE POLICY "Creators can delete their listings" ON public.team_listings FOR DELETE USING (auth.uid() = creator_id);
+
+ALTER TABLE public.external_hackathons ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "External hackathons are viewable by everyone" ON public.external_hackathons;
+CREATE POLICY "External hackathons are viewable by everyone" ON public.external_hackathons FOR SELECT USING (true);
+
+ALTER TABLE public.favorites ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view own favorites" ON public.favorites;
+CREATE POLICY "Users can view own favorites" ON public.favorites FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can manage own favorites" ON public.favorites;
+CREATE POLICY "Users can manage own favorites" ON public.favorites FOR ALL USING (auth.uid() = user_id);
+
+-- Update Join Requests Policy for listings
+DROP POLICY IF EXISTS "Users can insert own requests for listings" ON public.join_requests;
+CREATE POLICY "Users can insert own requests for listings" ON public.join_requests FOR INSERT WITH CHECK (
+    auth.uid() = applicant_id
 );
