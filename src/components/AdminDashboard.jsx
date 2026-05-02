@@ -134,13 +134,19 @@ function AdminDashboard({ session, profile }) {
     setLoading(false);
   };
 
+  const ensureAbsoluteUrl = (url) => {
+    if (!url) return '#';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    return `https://${url}`;
+  };
+
   const handleCreateHackathon = async (e) => {
     e.preventDefault();
     const hackData = {
         title: hackTitle,
         description: hackDesc,
         date: hackDate,
-        link: hackLink,
+        link: ensureAbsoluteUrl(hackLink),
         image_url: hackImage || 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&q=80&w=1000',
         source: hackSource
     };

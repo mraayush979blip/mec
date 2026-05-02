@@ -411,6 +411,12 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
     }
   };
 
+  const ensureAbsoluteUrl = (url) => {
+    if (!url) return '#';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    return `https://${url}`;
+  };
+
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
   const handleInstallClick = async () => {
@@ -1129,7 +1135,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem', color: 'var(--accent)', fontWeight: 700, fontSize: '0.85rem' }}>
                         <Calendar size={14} /> {hack.date}
                       </div>
-                      <button className="btn btn-primary" style={{ width: '100%', marginTop: '1.5rem' }} onClick={() => window.open(hack.link, '_blank')}>
+                      <button className="btn btn-primary" style={{ width: '100%', marginTop: '1.5rem' }} onClick={() => window.open(ensureAbsoluteUrl(hack.link), '_blank')}>
                         Visit Official Site <Globe size={16} />
                       </button>
                     </div>
