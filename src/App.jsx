@@ -415,7 +415,7 @@ function App() {
                       <div className="hero-content">
                         <div className="badge fade-in-up delay-1"><Sparkles size={14} /> Official Mechatronian Platform</div>
                         <h1 className="hero-title fade-in-up delay-1">The Future of <span className="text-gradient">Student Innovation.</span></h1>
-                        <p className="hero-subtitle fade-in-up delay-2">Find the perfect team, discover cutting-edge campus events, and bring your project ideas to life with our unified mechatronics collaboration engine.</p>
+                        <p className="hero-subtitle fade-in-up delay-2">Find teams, discover events, and build your projects with the unified collaboration engine.</p>
                         <div className="hero-actions fade-in-up delay-3">
                           <Link to="/signup" className="btn btn-primary btn-large">Start Your Project <ArrowRight size={20} /></Link>
                           <Link to="/login" className="btn btn-secondary btn-large">Sign In</Link>

@@ -1098,7 +1098,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
         {activeTab === 'discovery' && (
           <div className="fade-in-up">
             <h1 className="dashboard-title">Team Discovery</h1>
-            <p className="subtitle">Curated hackathons and opportunities from around the web.</p>
+            <p className="subtitle">Top hackathons and opportunities from the web.</p>
 
             <div className="glass-panel" style={{ padding: '1rem', marginBottom: '2.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
               <Search size={20} color="var(--text-secondary)" />
@@ -1162,7 +1162,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem', flexWrap: 'wrap', gap: '1rem' }}>
               <div style={{ flex: 1, minWidth: '200px' }}>
                 <h1 className="dashboard-title">My Recruitment Posts</h1>
-                <p className="subtitle">Manage your listings or create a new one to find talent.</p>
+                <p className="subtitle">Manage project listings and find talent.</p>
               </div>
               <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
                 <button className="btn btn-secondary" style={{ padding: '0.6rem 1rem', fontSize: '0.85rem' }} onClick={fetchListings}>

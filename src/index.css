@@ -300,6 +300,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.6rem;
+  white-space: nowrap;
 }
 
 .btn-primary {
@@ -325,9 +326,10 @@ body {
 }
 
 .btn-large {
-  padding: 1.2rem 2.4rem;
-  font-size: 1.1rem;
-  border-radius: 20px;
+  padding: 1rem 2.2rem;
+  font-size: 1rem;
+  border-radius: 18px;
+  height: 58px;
 }
 
 /* Hero Section */
@@ -362,8 +364,9 @@ body {
 
 .hero-actions {
   display: flex;
-  gap: 1.5rem;
+  gap: 1rem;
   margin-bottom: 4rem;
+  flex-wrap: wrap;
 }
 
 .hero-credits {
@@ -453,17 +456,18 @@ body {
 }
 
 .btn-dev {
-  background: rgba(255, 255, 255, 0.03) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
   border: 1px solid var(--glass-border) !important;
   color: var(--text-primary) !important;
   position: relative;
   overflow: hidden;
+  backdrop-filter: blur(10px);
 }
 
 .btn-dev:hover {
-  background: rgba(0, 122, 255, 0.05) !important;
-  border-color: var(--accent) !important;
-  color: var(--accent) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(-2px);
 }
 
 .credit-divider {
