@@ -36,6 +36,30 @@ const AuthLayout = ({ children }) => (
 );
 
 function App() {
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+
+  useEffect(() => {
+    // PWA Install logic
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    });
+
+    window.addEventListener('appinstalled', () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+    });
+
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true);
+    }
+
+    // Notification permission logic
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
   const [authFlow, setAuthFlow] = useState('landing'); // 'landing', 'login', 'signup', 'verify_otp', 'forgot_password', 'verify_forgot', 'reset_password'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -100,9 +124,16 @@ function App() {
       )
       .on(
         'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'team_requests' },
+        (payload) => {
+          showNotification('New Team Request!', 'Someone wants to join a team.');
+        }
+      )
+      .on(
+        'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'team_listings' },
         (payload) => {
-          showNotification('New Student Post!', payload.new.team_name);
+          showNotification('New Recruitment Post!', payload.new.team_name);
         }
       )
       .subscribe();
@@ -406,7 +437,7 @@ function App() {
 
           <Route path="/dashboard" element={<Navigate to="/dashboard/events" replace />} />
           <Route path="/dashboard/:tab" element={
-            !session ? <Navigate to="/login" replace /> : (profile?.role !== 'admin' ? <StudentDashboard session={session} profile={profile} /> : <Navigate to="/admin" replace />)
+            !session ? <Navigate to="/login" replace /> : (profile?.role !== 'admin' ? <StudentDashboard session={session} profile={profile} deferredPrompt={deferredPrompt} isInstalled={isInstalled} /> : <Navigate to="/admin" replace />)
           } />
 
           {/* Catch-all */}

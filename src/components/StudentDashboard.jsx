@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   LogOut, User, Calendar, PlusCircle, ArrowRight, Activity, 
   Users, Shield, CheckCircle, XCircle, Star, Search, 
-  MapPin, Link as LinkIcon, Briefcase, Globe, GitBranch, FileText, MessageCircle
+  MapPin, Link as LinkIcon, Briefcase, Globe, GitBranch, FileText, MessageCircle, Download, Smartphone
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -11,7 +11,7 @@ const Skeleton = ({ width, height, borderRadius = '12px', margin = '0' }) => (
   <div className="skeleton" style={{ width, height, borderRadius, margin }} />
 );
 
-function StudentDashboard({ session, profile }) {
+function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -408,6 +408,22 @@ function StudentDashboard({ session, profile }) {
       alert(error.message);
     } finally {
       setUploadingAvatar(false);
+    }
+  };
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`User response to the install prompt: ${outcome}`);
+    } else if (isIOS) {
+      alert('To install on iOS:\n1. Tap the Share button in Safari\n2. Scroll down and tap "Add to Home Screen"');
+    } else if (isInstalled) {
+      alert('App is already installed! If there is an update, it will apply automatically on the next launch.');
+    } else {
+      alert('Installation prompt not available. Try adding to home screen via your browser menu.');
     }
   };
 
@@ -1885,6 +1901,9 @@ function StudentDashboard({ session, profile }) {
               <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem', flexWrap: 'wrap' }}>
                 <button className="btn btn-primary" style={{ flex: 1, minWidth: '250px', padding: '1.2rem' }} onClick={handleSaveProfile} disabled={saving}>
                   {saving ? 'Syncing Profile...' : 'Save Professional Profile'}
+                </button>
+                <button className="btn btn-secondary" style={{ padding: '1.2rem 1.5rem', background: isInstalled ? 'rgba(52, 199, 89, 0.1)' : 'rgba(0, 113, 227, 0.1)', color: isInstalled ? '#34C759' : 'var(--accent)', flex: 1, minWidth: '200px' }} onClick={handleInstallClick}>
+                   {isInstalled ? <><CheckCircle size={20} style={{ marginRight: '0.5rem' }}/> App Installed</> : <><Download size={20} style={{ marginRight: '0.5rem' }}/> Install App</>}
                 </button>
                 <button className="btn btn-secondary" style={{ padding: '1.2rem 1.5rem', background: 'rgba(255, 59, 48, 0.1)', color: '#FF3B30', flexShrink: 0 }} onClick={() => supabase.auth.signOut()}>
                   <LogOut size={20} style={{ marginRight: '0.5rem' }}/> Sign Out
