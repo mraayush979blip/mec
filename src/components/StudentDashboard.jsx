@@ -38,7 +38,7 @@ function StudentDashboard({ session, profile }) {
   const [activityTab, setActivityTab] = useState('requested'); // 'requested', 'approve', 'invitations', 'global'
   const [myRequests, setMyRequests] = useState([]);
   const [myInvitations, setMyInvitations] = useState([]);
-  const [sentInvitations, setSentInvitations] = useState([]);
+  const [sentInvitations, setSentInvitations] = useState({});
   const [incomingRequests, setIncomingRequests] = useState([]);
   const [allRequests, setAllRequests] = useState([]);
   
@@ -402,10 +402,14 @@ function StudentDashboard({ session, profile }) {
     if (teamIds.length > 0) {
       const { data: sentInvites } = await supabase
         .from('join_requests')
-        .select('applicant_id')
+        .select('applicant_id, status')
         .in('team_id', teamIds)
         .eq('source', 'invitation');
-      if (sentInvites) setSentInvitations(sentInvites.map(i => i.applicant_id));
+      if (sentInvites) {
+        const inviteMap = {};
+        sentInvites.forEach(i => inviteMap[i.applicant_id] = i.status);
+        setSentInvitations(inviteMap);
+      }
     }
 
     // 5. Fetch global system log
@@ -437,7 +441,7 @@ function StudentDashboard({ session, profile }) {
       setTeamAction('create'); // Use create view for management
       setTeamName(data.team_name);
       setTeamRequirements(data.requirements);
-      fetchAvailableStudents(event.id);
+      fetchAvailableStudents(event.id, data.id);
     } else {
       setMyTeamForEvent(null);
     }
@@ -452,7 +456,7 @@ function StudentDashboard({ session, profile }) {
     }
   }, []);
 
-  const fetchAvailableStudents = async (eventId) => {
+  const fetchAvailableStudents = async (eventId, teamId) => {
     const { data } = await supabase
       .from('profiles')
       .select('*')
@@ -460,6 +464,20 @@ function StudentDashboard({ session, profile }) {
       .neq('id', profile.id)
       .limit(20); // Limit to 20 for performance
     if (data) setAvailableStudents(data);
+
+    if (teamId) {
+      const { data: invites } = await supabase
+        .from('join_requests')
+        .select('applicant_id, status')
+        .eq('team_id', teamId)
+        .eq('source', 'invitation');
+      
+      if (invites) {
+        const inviteMap = {};
+        invites.forEach(i => inviteMap[i.applicant_id] = i.status);
+        setSentInvitations(inviteMap);
+      }
+    }
   };
 
   const handleInviteStudent = async (studentId) => {
@@ -476,6 +494,7 @@ function StudentDashboard({ session, profile }) {
 
     if (!error) {
       alert("Invitation sent!");
+      setSentInvitations(prev => ({ ...prev, [studentId]: 'pending' }));
     } else {
       if (error.code === '23505') alert("Invitation already sent to this student.");
       else alert(error.message);
@@ -1122,14 +1141,20 @@ function StudentDashboard({ session, profile }) {
                             <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{student.dev_role} • {student.skills?.slice(0, 3).join(', ')}</p>
                           </div>
                         </div>
-                        <button 
-                          className="btn btn-secondary" 
-                          style={{ padding: '0.4rem 1rem', fontSize: '0.8rem' }}
-                          onClick={() => handleInviteStudent(student.id)}
-                          disabled={invitingId === student.id || sentInvitations.includes(student.id)}
-                        >
-                          {invitingId === student.id ? 'Sending...' : sentInvitations.includes(student.id) ? 'Invited' : 'Invite'}
-                        </button>
+                        {sentInvitations[student.id] ? (
+                          <span className={`badge ${sentInvitations[student.id] === 'approved' ? 'badge-green' : sentInvitations[student.id] === 'rejected' ? 'badge-red' : 'badge-purple'}`}>
+                            {sentInvitations[student.id] === 'approved' ? 'Accepted' : sentInvitations[student.id] === 'rejected' ? 'Declined' : 'Pending'}
+                          </span>
+                        ) : (
+                          <button 
+                            className="btn btn-secondary" 
+                            style={{ padding: '0.4rem 1rem', fontSize: '0.8rem' }}
+                            onClick={() => handleInviteStudent(student.id)}
+                            disabled={invitingId === student.id}
+                          >
+                            {invitingId === student.id ? 'Sending...' : 'Invite'}
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1157,7 +1182,7 @@ function StudentDashboard({ session, profile }) {
               ) : existingTeams.map(team => {
                 const isCreator = team.creator_id === profile.id;
                 const isMember = team.team_members?.some(m => m.user_id === profile.id);
-                const hasRequested = team.join_requests?.some(r => r.applicant_id === profile.id);
+                const hasRequested = team.join_requests?.find(r => r.applicant_id === profile.id);
                 const isExpanded = expandedTeamId === team.id;
                 const pendingApps = (team.join_requests || []).filter(r => r.source === 'application' && r.status === 'pending');
                 const allApps = (team.join_requests || []).filter(r => r.source === 'application');
@@ -1180,13 +1205,16 @@ function StudentDashboard({ session, profile }) {
                         <span className="badge badge-green" style={{ padding: '0.5rem 1rem' }}>Your Team</span>
                       ) : isMember ? (
                         <span className="badge badge-green" style={{ padding: '0.5rem 1rem' }}>Joined ✓</span>
+                      ) : hasRequested ? (
+                        <span className={`badge ${hasRequested.status === 'approved' ? 'badge-green' : hasRequested.status === 'rejected' ? 'badge-red' : 'badge-blue'}`} style={{ padding: '0.5rem 1rem' }}>
+                           {hasRequested.status === 'approved' ? 'Accepted' : hasRequested.status === 'rejected' ? 'Declined' : 'Request Pending'}
+                        </span>
                       ) : (
                         <button 
                           className="btn btn-primary" 
                           onClick={() => handleRequestJoin(team.id)}
-                          disabled={hasRequested}
                         >
-                          {hasRequested ? 'Request Sent' : 'Request to Join'}
+                          Request to Join
                         </button>
                       )}
                     </div>
