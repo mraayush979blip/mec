@@ -19,13 +19,26 @@
         await OneSignal.init({
           appId: "ee87ca2c-bd88-4bbf-aa71-15ac6c6fd7ad",
           safari_web_id: "web.onesignal.auto.166712e5-2aee-41ea-b95e-8df3d8ab1f28",
-          serviceWorkerPath: 'sw.js', // Use the combined SW
+          serviceWorkerPath: 'sw.js?v=2', // Version bump to force re-evaluation
           notifyButton: {
             enable: true,
+            displayPredicate: async () => {
+              const isSubscribed = await OneSignal.User.PushSubscription.optedIn;
+              return !isSubscribed;
+            }
           },
         });
       });
     </script>
+    <style>
+      /* Fallback to hide bell container if subscribed */
+      .onesignal-bell-container.onesignal-reset {
+        display: none !important;
+      }
+      body:not(.onesignal-subscribed) .onesignal-bell-container.onesignal-reset {
+        display: block !important;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
