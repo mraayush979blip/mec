@@ -244,8 +244,8 @@ function App() {
           setResendAttempts(1);
         } else {
           // STEP 2: Verify the OTP
-          if (!otp || otp.length < 6) {
-            throw new Error('Please enter the full 6-digit verification code.');
+          if (!otp || otp.length < 8) {
+            throw new Error('Please enter the full 8-digit verification code.');
           }
           const { error: verifyError } = await supabase.auth.verifyOtp({ 
             email: email.trim(), 
@@ -510,7 +510,7 @@ function App() {
                       <Activity size={32} />
                     </div>
                     <h1 className="title" style={{ fontSize: '2rem' }}>Verify Email</h1>
-                    <p className="subtitle">We've sent a 6-digit code to <strong>{email}</strong>. Please enter it below.</p>
+                    <p className="subtitle">We've sent an 8-digit code to <strong>{email}</strong>. Please enter it below.</p>
                     
                     <form onSubmit={(e) => { setAuthFlow('signup'); handleAuth(e); }}>
                       {errorMsg && <div className="error-alert" style={{ marginBottom: '1.5rem' }}>{errorMsg}</div>}
@@ -518,14 +518,14 @@ function App() {
                         <input 
                           type="text" 
                           className="glass-input" 
-                          placeholder="000000" 
+                          placeholder="00000000" 
                           value={otp} 
-                          onChange={(e)=>setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} 
+                          onChange={(e)=>setOtp(e.target.value.replace(/\D/g, '').slice(0, 8))} 
                           required 
                           style={{ textAlign: 'center', letterSpacing: '0.4em', fontSize: '1.5rem', fontWeight: 800, padding: '1.2rem' }} 
                         />
                       </div>
-                      <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={loading || otp.length < 6}>
+                      <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={loading || otp.length < 8}>
                         {loading ? 'Verifying...' : 'Complete Registration'} <ArrowRight size={18} />
                       </button>
                     </form>
