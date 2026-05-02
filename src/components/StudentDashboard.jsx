@@ -7,12 +7,17 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
+const Skeleton = ({ width, height, borderRadius = '12px', margin = '0' }) => (
+  <div className="skeleton" style={{ width, height, borderRadius, margin }} />
+);
+
 function StudentDashboard({ session, profile }) {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Derived active tab from URL path
-  const activeTab = location.pathname.split('/')[1] || 'events';
+  // Derived active tab from URL path (handles /dashboard/events)
+  const pathParts = location.pathname.split('/').filter(Boolean);
+  const activeTab = pathParts[pathParts[0] === 'dashboard' ? 1 : 0] || 'events';
 
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -94,7 +99,7 @@ function StudentDashboard({ session, profile }) {
 
 
   const handleTabChange = (tab) => {
-    navigate(`/${tab === 'events' ? '' : tab}`);
+    navigate(`/dashboard/${tab}`);
     triggerHaptic(15);
   };
 
@@ -831,7 +836,17 @@ function StudentDashboard({ session, profile }) {
 
             {loading ? (
               <div style={{ display: 'grid', gap: '1.5rem' }}>
-                {[1,2,3].map(i => <div key={i} className="glass-panel skeleton" style={{ height: '180px' }}></div>)}
+                {[1,2,3].map(i => (
+                  <div key={i} className="glass-panel" style={{ padding: '2rem' }}>
+                    <Skeleton width="100px" height="20px" margin="0 0 1rem 0" />
+                    <Skeleton width="70%" height="32px" margin="0 0 0.5rem 0" />
+                    <Skeleton width="40%" height="20px" margin="0 0 1.5rem 0" />
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                       <Skeleton width="120px" height="45px" borderRadius="15px" />
+                       <Skeleton width="120px" height="45px" borderRadius="15px" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : events.length === 0 ? (
               <div className="glass-panel" style={{ padding: '4rem 2rem', textAlign: 'center' }}>
@@ -1101,7 +1116,22 @@ function StudentDashboard({ session, profile }) {
 
             {loadingListings ? (
               <div style={{ display: 'grid', gap: '1.5rem' }}>
-                {[1,2].map(i => <div key={i} className="glass-panel skeleton" style={{ height: '300px' }}></div>)}
+                {[1,2].map(i => (
+                  <div key={i} className="glass-panel" style={{ padding: '2.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                      <div style={{ flex: 1 }}>
+                        <Skeleton width="80px" height="20px" margin="0 0 0.8rem 0" />
+                        <Skeleton width="60%" height="32px" margin="0 0 0.5rem 0" />
+                        <Skeleton width="40%" height="24px" />
+                      </div>
+                      <Skeleton width="140px" height="50px" borderRadius="15px" />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                       <Skeleton width="100%" height="80px" borderRadius="18px" />
+                       <Skeleton width="100%" height="80px" borderRadius="18px" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : listings.length === 0 ? (
               <div className="glass-panel" style={{ padding: '4rem 2rem', textAlign: 'center' }}>
@@ -1443,7 +1473,19 @@ function StudentDashboard({ session, profile }) {
             </div>
 
             <div style={{ marginTop: '2rem' }}>
-                {activityTab === 'requested' && (
+                {loading ? (
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    {[1,2,3].map(i => (
+                      <div key={i} className="glass-panel" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ flex: 1 }}>
+                          <Skeleton width="150px" height="24px" margin="0 0 0.5rem 0" />
+                          <Skeleton width="100px" height="18px" />
+                        </div>
+                        <Skeleton width="80px" height="30px" borderRadius="10px" />
+                      </div>
+                    ))}
+                  </div>
+                ) : activityTab === 'requested' && (
                   <div style={{ display: 'grid', gap: '1rem' }}>
                     {myRequests.length === 0 ? (
                         <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No sent requests yet.</div>
@@ -1574,7 +1616,31 @@ function StudentDashboard({ session, profile }) {
             <p className="subtitle">View and manage teams you've built or joined.</p>
 
             <div style={{ display: 'grid', gap: '2rem', marginTop: '2rem' }}>
-              {myJoinedTeams.length === 0 ? (
+              {loading ? (
+                <div style={{ display: 'grid', gap: '2rem' }}>
+                  {[1].map(i => (
+                    <div key={i} className="glass-panel" style={{ padding: '2rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '1.5rem' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', gap: '0.8rem', marginBottom: '1rem' }}>
+                            <Skeleton width="100px" height="24px" />
+                            <Skeleton width="120px" height="24px" />
+                          </div>
+                          <Skeleton width="60%" height="40px" margin="0 0 0.5rem 0" />
+                          <Skeleton width="40%" height="20px" />
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.8rem' }}>
+                           <Skeleton width="150px" height="50px" borderRadius="15px" />
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+                        <Skeleton width="100%" height="200px" borderRadius="24px" />
+                        <Skeleton width="100%" height="200px" borderRadius="24px" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : myJoinedTeams.length === 0 ? (
                 <div className="glass-panel" style={{ padding: '5rem 2rem', textAlign: 'center' }}>
                    <Users size={64} color="var(--text-secondary)" style={{ marginBottom: '1.5rem', opacity: 0.3 }} />
                    <h3 style={{ fontSize: '1.5rem', fontWeight: 800 }}>No Active Teams</h3>

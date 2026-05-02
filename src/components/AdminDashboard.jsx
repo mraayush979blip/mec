@@ -3,6 +3,10 @@ import { LogOut, Calendar, PlusCircle, Activity, Users, Settings, Globe } from '
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
+const Skeleton = ({ width, height, borderRadius = '12px', margin = '0' }) => (
+  <div className="skeleton" style={{ width, height, borderRadius, margin }} />
+);
+
 function AdminDashboard({ session, profile }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -383,7 +387,27 @@ function AdminDashboard({ session, profile }) {
             <p className="subtitle">Manage all active events and monitor student participation.</p>
 
             {loading ? (
-              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Loading events...</div>
+              <div style={{ display: 'grid', gap: '1.5rem' }}>
+                {[1,2,3].map(i => (
+                  <div key={i} className="glass-panel" style={{ padding: '2rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                      <div style={{ flex: 1 }}>
+                        <Skeleton width="100px" height="20px" margin="0 0 0.8rem 0" />
+                        <Skeleton width="60%" height="32px" margin="0 0 0.5rem 0" />
+                        <Skeleton width="40%" height="24px" />
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <Skeleton width="40px" height="40px" borderRadius="10px" />
+                        <Skeleton width="40px" height="40px" borderRadius="10px" />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                       <Skeleton width="120px" height="40px" borderRadius="12px" />
+                       <Skeleton width="120px" height="40px" borderRadius="12px" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : events.length === 0 ? (
               <div className="glass-panel" style={{ padding: '4rem 2rem', textAlign: 'center' }}>
                 <Calendar size={48} color="var(--text-secondary)" style={{ marginBottom: '1rem', opacity: 0.5 }} />
