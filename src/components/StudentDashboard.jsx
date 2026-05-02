@@ -153,7 +153,7 @@ function StudentDashboard({ session, profile }) {
     setLoadingListings(true);
     const { data, error } = await supabase
       .from('team_listings')
-      .select('*, profiles(full_name, dev_role, skills)')
+      .select('*, profiles!team_listings_creator_id_fkey(full_name, dev_role, skills)')
       .order('created_at', { ascending: false });
     
     if (error) {
@@ -246,7 +246,7 @@ function StudentDashboard({ session, profile }) {
     // Fetch Student Listings
     const { data: studentListings, error: listError } = await supabase
       .from('team_listings')
-      .select('*, profiles(full_name, dev_role, skills)')
+      .select('*, profiles!team_listings_creator_id_fkey(full_name, dev_role, skills)')
       .order('created_at', { ascending: false });
     
     if (listError) console.error("Error fetching student listings for feed:", listError);
@@ -312,12 +312,12 @@ function StudentDashboard({ session, profile }) {
         teams:teams!team_id(
           team_name,
           events:events!event_id(title),
-          profiles(whatsapp_no)
+          profiles:profiles!teams_creator_id_fkey(whatsapp_no)
         ),
         team_listings:team_listings!listing_id(
           team_name,
           hackathon_name,
-          profiles(whatsapp_no)
+          profiles:profiles!team_listings_creator_id_fkey(whatsapp_no)
         )
       `)
       .eq('applicant_id', profile.id)
@@ -332,7 +332,7 @@ function StudentDashboard({ session, profile }) {
         *,
         teams:teams!team_id(
           team_name,
-          profiles(full_name)
+          profiles:profiles!teams_creator_id_fkey(full_name)
         )
       `)
       .eq('applicant_id', profile.id)
@@ -355,7 +355,7 @@ function StudentDashboard({ session, profile }) {
         .select(`
           *,
           teams:teams!team_id(team_name, events:events!event_id(title)),
-          profiles(full_name, skills, branch, email, github_url, linkedin_url, resume_url)
+          profiles:profiles!join_requests_applicant_id_fkey(full_name, skills, branch, email, github_url, linkedin_url, resume_url)
         `)
         .in('team_id', teamIds)
         .eq('status', 'pending')
@@ -371,7 +371,7 @@ function StudentDashboard({ session, profile }) {
         .select(`
           *,
           team_listings:team_listings!listing_id(team_name, hackathon_name),
-          profiles(full_name, skills, branch, email, github_url, linkedin_url, resume_url)
+          profiles:profiles!join_requests_applicant_id_fkey(full_name, skills, branch, email, github_url, linkedin_url, resume_url)
         `)
         .in('listing_id', listingIds)
         .eq('status', 'pending')
@@ -387,7 +387,7 @@ function StudentDashboard({ session, profile }) {
         .select(`
           *,
           teams:teams!team_id(team_name, events:events!event_id(title)),
-          profiles(full_name, skills)
+          profiles:profiles!join_requests_applicant_id_fkey(full_name, skills)
         `)
         .in('team_id', teamIds)
         .eq('source', 'invitation')
@@ -414,7 +414,7 @@ function StudentDashboard({ session, profile }) {
       .select(`
         *,
         teams:teams!team_id(team_name),
-        profiles(full_name)
+        profiles:profiles!join_requests_applicant_id_fkey(full_name)
       `)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -522,18 +522,18 @@ function StudentDashboard({ session, profile }) {
       .from('teams')
       .select(`
         *,
-        profiles(full_name, dev_role),
+        profiles:profiles!teams_creator_id_fkey(full_name, dev_role),
         team_members(
           user_id,
           role,
-          profiles(full_name)
+          profiles:profiles!team_members_user_id_fkey(full_name)
         ),
         join_requests(
           id,
           status,
           source,
           applicant_id,
-          profiles(full_name)
+          profiles:profiles!join_requests_applicant_id_fkey(full_name)
         )
       `)
       .eq('event_id', selectedEvent.id);
