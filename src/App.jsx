@@ -42,14 +42,17 @@ function App() {
 
   useEffect(() => {
     // PWA Install logic
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
+    const installHandler = (e) => {
+      // e.preventDefault(); // ALLOW native banner
       setDeferredPrompt(e);
-    });
+    };
+
+    window.addEventListener('beforeinstallprompt', installHandler);
 
     window.addEventListener('appinstalled', () => {
       setIsInstalled(true);
       setDeferredPrompt(null);
+      setShowInstallBanner(false);
     });
 
     if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
@@ -64,12 +67,10 @@ function App() {
       }
     }, 4000);
 
-    // Notification permission logic
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-
-    return () => clearTimeout(timer);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', installHandler);
+      clearTimeout(timer);
+    };
   }, []);
   const [authFlow, setAuthFlow] = useState('landing'); // 'landing', 'login', 'signup', 'verify_otp', 'forgot_password', 'verify_forgot', 'reset_password'
   const [email, setEmail] = useState('');

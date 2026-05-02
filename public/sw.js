@@ -1,19 +1,27 @@
-// Import OneSignal SDK (v2)
+// OneSignal SDK - Must be at the very top for initial evaluation
 importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js');
 
-const CACHE_NAME = 'mechatronian-v1';
+// Explicit message handler to satisfy 'initial evaluation' requirement
+self.addEventListener('message', (event) => {
+  // OneSignal's SDK will also add its own listener via importScripts
+});
+
+const CACHE_NAME = 'mechatronian-v2';
 
 // Install: skip waiting to activate immediately
 self.addEventListener('install', event => {
   self.skipWaiting();
 });
 
-// Activate: clear old caches
+// Activate: clear old caches and take control immediately
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(names =>
-      Promise.all(names.filter(n => n !== CACHE_NAME).map(n => caches.delete(n)))
-    )
+    Promise.all([
+      caches.keys().then(names =>
+        Promise.all(names.filter(n => n !== CACHE_NAME).map(n => caches.delete(n)))
+      ),
+      self.clients.claim() // Take control of all pages immediately
+    ])
   );
 });
 
