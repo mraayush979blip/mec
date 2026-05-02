@@ -42,6 +42,7 @@ function App() {
         fetchProfile(session.user.id);
       } else {
         setProfile(null);
+        setAuthFlow('login');
         localStorage.removeItem('student_active_tab');
         localStorage.removeItem('admin_active_tab');
         localStorage.removeItem('fresh_login');

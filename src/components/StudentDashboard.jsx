@@ -604,12 +604,47 @@ function StudentDashboard({ session, profile }) {
   const fetchMyTeams = async () => {
     setLoading(true);
     try {
-      const { data: created } = await supabase.from('teams').select('*, events(*)').eq('creator_id', profile.id);
-      const { data: joined } = await supabase.from('team_members').select('*, teams(*, events(*))').eq('user_id', profile.id);
-      const combined = [...(created || []).map(t => ({ ...t, isLead: true })), ...(joined || []).map(j => ({ ...j.teams, isLead: false }))];
+      const { data: created } = await supabase
+        .from('teams')
+        .select(`
+          *, 
+          events(*),
+          team_members(
+            user_id,
+            role,
+            profiles:profiles!team_members_user_id_fkey(full_name, dev_role, skills, branch, whatsapp_no)
+          )
+        `)
+        .eq('creator_id', profile.id);
+
+      const { data: joined } = await supabase
+        .from('team_members')
+        .select(`
+          team_id,
+          teams(
+            *, 
+            events(*),
+            team_members(
+              user_id,
+              role,
+              profiles:profiles!team_members_user_id_fkey(full_name, dev_role, skills, branch, whatsapp_no)
+            )
+          )
+        `)
+        .eq('user_id', profile.id);
+
+      const combined = [
+        ...(created || []).map(t => ({ ...t, isLead: true })), 
+        ...(joined || []).map(j => ({ ...j.teams, isLead: false }))
+      ];
+      
       const unique = Array.from(new Map((combined || []).filter(t=>t).map(t => [t.id, t])).values());
       setMyJoinedTeams(unique);
-    } catch (err) { console.error(err); } finally { setLoading(false); }
+    } catch (err) { 
+      console.error(err); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const handleViewProfile = async (userId) => {
@@ -1547,41 +1582,93 @@ function StudentDashboard({ session, profile }) {
                    <button className="btn btn-primary" onClick={() => handleTabChange('events')}>Explore Events</button>
                 </div>
               ) : myJoinedTeams.map(team => (
-                <div key={team.id} className="glass-panel fade-in-up" style={{ padding: '2rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div style={{ flex: 1, minWidth: '200px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-                        <span className={`badge ${team.isLead ? 'badge-purple' : 'badge-blue'}`}>{team.isLead ? 'Team Lead' : 'Member'}</span>
-                        <span className="badge badge-green">{team.events?.title || 'External Project'}</span>
+                <div key={team.id} className="glass-panel fade-in-up" style={{ padding: '2rem', border: '1px solid var(--glass-border)', background: 'rgba(255, 255, 255, 0.03)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1.5rem' }}>
+                    <div style={{ flex: 1, minWidth: '280px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                        <span className={`badge ${team.isLead ? 'badge-purple' : 'badge-blue'}`} style={{ padding: '0.4rem 1rem' }}>
+                          {team.isLead ? <Shield size={12} style={{ marginRight: '4px' }} /> : <User size={12} style={{ marginRight: '4px' }} />}
+                          {team.isLead ? 'Team Lead' : 'Collaborator'}
+                        </span>
+                        <span className="badge badge-green" style={{ padding: '0.4rem 1rem' }}>{team.events?.title || 'General Mission'}</span>
                       </div>
-                      <h2 style={{ fontSize: 'clamp(1.4rem, 5vw, 2rem)', fontWeight: 800, letterSpacing: '-0.03em' }}>{team.team_name}</h2>
+                      <h2 style={{ fontSize: 'clamp(1.8rem, 5vw, 2.5rem)', fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>{team.team_name}</h2>
+                      <p style={{ color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.95rem' }}>Mission established on {new Date(team.created_at).toLocaleDateString()}</p>
                     </div>
-                    {!team.isLead && (
-                      <button className="btn btn-secondary" style={{ color: 'var(--status-red)', borderColor: 'rgba(255,59,48,0.2)', padding: '0.6rem 1rem', fontSize: '0.85rem' }} onClick={() => handleLeaveTeam(team.id)}>
-                        Leave Team
-                      </button>
-                    )}
+                    
+                    <div style={{ display: 'flex', gap: '0.8rem' }}>
+                       <button className="btn btn-secondary" style={{ padding: '0.8rem 1.2rem', borderRadius: '15px' }} onClick={() => handleTabChange('activity')}>
+                         Recruitment Activity
+                       </button>
+                       {!team.isLead && (
+                         <button className="btn" style={{ background: 'rgba(255, 59, 48, 0.1)', color: '#FF3B30', padding: '0.8rem 1.2rem', borderRadius: '15px', fontWeight: 700 }} onClick={() => handleLeaveTeam(team.id)}>
+                           Leave Team
+                         </button>
+                       )}
+                    </div>
                   </div>
                   
-                  <div className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(0,0,0,0.02)', borderRadius: '24px' }}>
-                    <p style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '0.8rem' }}>Mission Statement / Requirements</p>
-                    <p style={{ fontSize: '1.1rem', lineHeight: '1.6', color: 'var(--text-primary)' }}>{team.requirements}</p>
-                  </div>
-
-                  <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ display: 'flex', marginLeft: '0.5rem' }}>
-                           {[1,2,3].map(i => (
-                             <div key={i} style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'var(--accent)', border: '2px solid white', marginLeft: '-10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.7rem', fontWeight: 800 }}>
-                                {i}
-                             </div>
-                           ))}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+                    {/* LEFT COLUMN: MISSION & DETAILS */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                      <div className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(0,0,0,0.02)', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem', color: 'var(--accent)' }}>
+                          <Briefcase size={18} />
+                          <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Mission & Strategy</span>
                         </div>
-                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Active Collaboration</span>
-                     </div>
-                     <button className="btn btn-secondary" onClick={() => handleTabChange('activity')}>
-                       View Approvals <ArrowRight size={16} />
-                     </button>
+                        <p style={{ fontSize: '1.05rem', lineHeight: '1.7', color: 'var(--text-primary)', opacity: 0.9 }}>{team.requirements || "No specific mission strategy defined yet."}</p>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, minWidth: '150px', background: 'rgba(52, 199, 89, 0.05)', padding: '1.2rem', borderRadius: '20px', border: '1px solid rgba(52, 199, 89, 0.1)' }}>
+                           <p style={{ fontSize: '0.65rem', fontWeight: 800, color: '#34C759', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Team Size</p>
+                           <p style={{ fontSize: '1.2rem', fontWeight: 800 }}>{team.team_members?.length || 1} Members</p>
+                        </div>
+                        <div style={{ flex: 1, minWidth: '150px', background: 'rgba(0, 122, 255, 0.05)', padding: '1.2rem', borderRadius: '20px', border: '1px solid rgba(0, 122, 255, 0.1)' }}>
+                           <p style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Project Status</p>
+                           <p style={{ fontSize: '1.2rem', fontWeight: 800 }}>Active Phase</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* RIGHT COLUMN: TEAM ROSTER */}
+                    <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem', color: '#AF52DE' }}>
+                        <Users size={18} />
+                        <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Member Directory</span>
+                      </div>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {team.team_members?.map((member, idx) => (
+                          <div key={idx} className="member-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                              <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
+                                {member.profiles?.full_name?.charAt(0)}
+                              </div>
+                              <div>
+                                <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>{member.profiles?.full_name}</h4>
+                                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{member.profiles?.dev_role || 'Specialist'}</p>
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              {member.profiles?.whatsapp_no && (
+                                <button className="btn-icon" onClick={() => window.open(`https://wa.me/${member.profiles.whatsapp_no.replace(/\D/g, '')}`, '_blank')} title="WhatsApp">
+                                  <MessageCircle size={16} />
+                                </button>
+                              )}
+                              <button className="btn-icon" onClick={() => handleViewProfile(member.user_id)} title="View Profile">
+                                <ArrowRight size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                        {(!team.team_members || team.team_members.length === 0) && (
+                          <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                            No members found. Use the recruitment tab to find talent.
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
