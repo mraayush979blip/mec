@@ -237,8 +237,8 @@ function AdminDashboard({ session, profile }) {
       .from('teams')
       .select(`
         *,
-        profiles:profiles!creator_id(full_name),
-        team_members(profiles:profiles!user_id(full_name))
+        profiles(full_name),
+        team_members(profiles(full_name))
       `)
       .eq('event_id', event.id);
     if (data) setEventTeams(data);
