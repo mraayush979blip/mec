@@ -293,7 +293,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
     // Fetch Student Listings
     const { data: studentListings, error: listError } = await supabase
       .from('team_listings')
-      .select('*, profiles!team_listings_creator_id_fkey(full_name, dev_role, skills), join_requests(applicant_id, status)')
+      .select('*, profiles!team_listings_creator_id_fkey(full_name, dev_role, skills), join_requests(applicant_id, status, profiles:profiles!join_requests_applicant_id_fkey(full_name))')
       .order('created_at', { ascending: false });
     
     if (listError) console.error("Error fetching student listings for feed:", listError);
@@ -1008,20 +1008,53 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                     </div>
 
                     {event.source_type === 'student' && (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
-                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                          <p style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>Expertise</p>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                            {event.required_skills?.slice(0, 3).map((s, i) => <span key={i} style={{ fontSize: '0.8rem', fontWeight: 600 }}>{s}</span>)}
+                      <>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                            <p style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>Expertise</p>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                              {event.required_skills?.slice(0, 3).map((s, i) => <span key={i} style={{ fontSize: '0.8rem', fontWeight: 600 }}>{s}</span>)}
+                            </div>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                            <p style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>Vacancies</p>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                              {event.roles_needed?.slice(0, 3).map((r, i) => <span key={i} style={{ fontSize: '0.8rem', fontWeight: 600 }}>{r}</span>)}
+                            </div>
                           </div>
                         </div>
-                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                          <p style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>Vacancies</p>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                            {event.roles_needed?.slice(0, 3).map((r, i) => <span key={i} style={{ fontSize: '0.8rem', fontWeight: 600 }}>{r}</span>)}
+
+                        {/* Team Activity Toggle for Student Recruitment */}
+                        <button 
+                          className="btn btn-secondary" 
+                          style={{ width: '100%', padding: '0.6rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', borderRadius: '12px', marginTop: '0.5rem' }}
+                          onClick={() => setExpandedListingId(expandedListingId === event.id ? null : event.id)}
+                        >
+                          {expandedListingId === event.id ? '▲ Hide Team Activity' : '▼ View Team Activity'}
+                        </button>
+
+                        {/* Expanded Team Activity Panel */}
+                        {expandedListingId === event.id && (
+                          <div className="fade-in-up" style={{ background: 'rgba(175, 82, 222, 0.05)', padding: '1.2rem', borderRadius: '20px', border: '1px solid rgba(175, 82, 222, 0.1)', marginTop: '0.5rem' }}>
+                            <p style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#AF52DE', marginBottom: '0.8rem', letterSpacing: '0.05em' }}>Recent Interest ({event.join_requests?.length || 0})</p>
+                            {(!event.join_requests || event.join_requests.length === 0) ? (
+                              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>No join requests yet.</p>
+                            ) : (
+                              <div style={{ display: 'grid', gap: '0.6rem' }}>
+                                {event.join_requests.slice(0, 5).map((req, idx) => (
+                                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', textDecoration: 'underline', color: 'var(--accent)' }} onClick={() => handleViewProfile(req.applicant_id)}>{req.profiles?.full_name}</span>
+                                    <span className={`badge ${req.status === 'approved' ? 'badge-green' : req.status === 'rejected' ? 'badge-red' : 'badge-blue'}`} style={{ fontSize: '0.6rem', padding: '0.2rem 0.6rem' }}>
+                                      {req.status}
+                                    </span>
+                                  </div>
+                                ))}
+                                {event.join_requests.length > 5 && <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textAlign: 'center' }}>+ {event.join_requests.length - 5} more applicants</p>}
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      </div>
+                        )}
+                      </>
                     )}
 
                     {event.type === 'poll' && event.options && (
