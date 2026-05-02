@@ -21,24 +21,11 @@
           safari_web_id: "web.onesignal.auto.166712e5-2aee-41ea-b95e-8df3d8ab1f28",
           serviceWorkerPath: 'sw.js?v=3', // Forced update
           notifyButton: {
-            enable: true,
-            displayPredicate: async () => {
-              const isSubscribed = await OneSignal.User.PushSubscription.optedIn;
-              return !isSubscribed;
-            }
+            enable: false,
           },
         });
       });
     </script>
-    <style>
-      /* Fallback to hide bell container if subscribed */
-      .onesignal-bell-container.onesignal-reset {
-        display: none !important;
-      }
-      body:not(.onesignal-subscribed) .onesignal-bell-container.onesignal-reset {
-        display: block !important;
-      }
-    </style>
   </head>
   <body>
     <div id="root"></div>
