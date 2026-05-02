@@ -153,7 +153,7 @@ function StudentDashboard({ session, profile }) {
     setLoadingListings(true);
     const { data, error } = await supabase
       .from('team_listings')
-      .select('*, profiles!team_listings_creator_id_fkey(full_name, dev_role, skills)')
+      .select('*, profiles!team_listings_creator_id_fkey(full_name, dev_role, skills), join_requests(applicant_id, status)')
       .order('created_at', { ascending: false });
     
     if (error) {
@@ -228,6 +228,8 @@ function StudentDashboard({ session, profile }) {
       else alert(error.message);
     } else {
       alert("Application sent! The team lead will be notified.");
+      fetchEvents();
+      if (activeTab === 'discovery') fetchListings();
     }
   };
 
@@ -246,7 +248,7 @@ function StudentDashboard({ session, profile }) {
     // Fetch Student Listings
     const { data: studentListings, error: listError } = await supabase
       .from('team_listings')
-      .select('*, profiles!team_listings_creator_id_fkey(full_name, dev_role, skills)')
+      .select('*, profiles!team_listings_creator_id_fkey(full_name, dev_role, skills), join_requests(applicant_id, status)')
       .order('created_at', { ascending: false });
     
     if (listError) console.error("Error fetching student listings for feed:", listError);
@@ -574,6 +576,7 @@ function StudentDashboard({ session, profile }) {
       else alert(error.message);
     } else {
       alert("Request sent successfully!");
+      loadExistingTeams();
     }
   };
 
@@ -858,11 +861,21 @@ function StudentDashboard({ session, profile }) {
                             </button>
                           )}
                         </>
-                      ) : (
-                        <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => handleApplyToListing(event.id)}>
-                          Request to Join Team <Users size={18} />
-                        </button>
-                      )}
+                      ) : (() => {
+                        const hasRequested = event.join_requests?.find(r => r.applicant_id === profile.id);
+                        if (hasRequested) {
+                          return (
+                            <span className={`badge ${hasRequested.status === 'approved' ? 'badge-green' : hasRequested.status === 'rejected' ? 'badge-red' : 'badge-blue'}`} style={{ padding: '0.8rem 1rem', width: '100%', display: 'flex', justifyContent: 'center', fontSize: '0.9rem' }}>
+                               {hasRequested.status === 'approved' ? 'Accepted ✓' : hasRequested.status === 'rejected' ? 'Declined' : 'Request Pending...'}
+                            </span>
+                          );
+                        }
+                        return (
+                          <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => handleApplyToListing(event.id)}>
+                            Request to Join Team <Users size={18} />
+                          </button>
+                        );
+                      })()}
                     </div>
                   </div>
                 ))}
@@ -1024,7 +1037,19 @@ function StudentDashboard({ session, profile }) {
                            <Star size={18} fill="currentColor" /> {listing.hackathon_name}
                         </div>
                       </div>
-                      <button className="btn btn-primary" style={{ padding: '1rem 2rem' }} onClick={() => handleApplyToListing(listing.id)}>Apply Now</button>
+                      {(() => {
+                        const hasRequested = listing.join_requests?.find(r => r.applicant_id === profile.id);
+                        if (hasRequested) {
+                          return (
+                            <span className={`badge ${hasRequested.status === 'approved' ? 'badge-green' : hasRequested.status === 'rejected' ? 'badge-red' : 'badge-blue'}`} style={{ padding: '1rem 2rem', display: 'flex', justifyContent: 'center', fontSize: '1rem' }}>
+                               {hasRequested.status === 'approved' ? 'Accepted ✓' : hasRequested.status === 'rejected' ? 'Declined' : 'Request Pending...'}
+                            </span>
+                          );
+                        }
+                        return (
+                          <button className="btn btn-primary" style={{ padding: '1rem 2rem' }} onClick={() => handleApplyToListing(listing.id)}>Apply Now</button>
+                        );
+                      })()}
                     </div>
                     
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
