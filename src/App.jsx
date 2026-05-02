@@ -83,21 +83,23 @@ function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      // If we are in the signup flow and not verified yet, don't set the session
-      // This prevents the dashboard from showing up automatically
-      if (authFlow === 'signup' && !isVerified) {
-        return;
-      }
-      setSession(session);
-      if (session) {
-        fetchProfile(session.user.id);
+    } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      // Prevent unintended flow changes during initialization or signup
+      if (authFlow === 'signup' && !isVerified) return;
+
+      if (currentSession) {
+        setSession(currentSession);
+        fetchProfile(currentSession.user.id);
       } else {
+        setSession(null);
         setProfile(null);
-        setAuthFlow('login');
-        localStorage.removeItem('student_active_tab');
-        localStorage.removeItem('admin_active_tab');
-        localStorage.removeItem('fresh_login');
+        // Only force 'login' if we are explicitly signing out
+        if (event === 'SIGNED_OUT') {
+          setAuthFlow('login');
+          localStorage.removeItem('student_active_tab');
+          localStorage.removeItem('admin_active_tab');
+          localStorage.removeItem('fresh_login');
+        }
       }
     });
 
@@ -142,7 +144,7 @@ function App() {
       subscription.unsubscribe();
       supabase.removeChannel(channel);
     };
-  }, [authFlow, isVerified]);
+  }, []);
 
   const showNotification = (title, body) => {
     if (!("Notification" in window)) return;

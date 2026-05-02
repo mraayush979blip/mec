@@ -954,59 +954,55 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
               </div>
             ) : (
               <div style={{ display: 'grid', gap: '1.5rem' }}>
-                {events.map((event) => (
-                  <div key={event.id} className="glass-panel fade-in-up" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.2rem', border: event.source_type === 'admin' ? '1px solid var(--glass-border)' : '1px solid var(--accent-light)' }}>
+                {events.map((event) => {
+                  const myTeamForEvent = teams.find(t => t.event_id === event.id && t.creator_id === profile.id);
+                  return (
+                  <div key={event.id} className="glass-panel fade-in-up" style={{ 
+                    padding: '1.8rem', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '1rem', 
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '28px',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
+                  }}>
                     
-                    {/* Source Banner */}
-                    <div style={{ 
-                      background: event.source_type === 'admin' ? 'var(--gradient-blue)' : 'var(--gradient-purple)',
-                      color: 'white',
-                      padding: '0.4rem 1.2rem',
-                      borderRadius: '100px',
-                      fontSize: '0.7rem',
-                      fontWeight: 800,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      alignSelf: 'flex-start',
-                      marginBottom: '-0.5rem',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                    }}>
-                      {event.source_type === 'admin' ? 'Official Admin Post' : <span style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleViewProfile(event.creator_id)}>Student Post: {event.profiles?.full_name}</span>}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                        <div style={{ 
+                          width: '8px', height: '8px', borderRadius: '50%', 
+                          background: event.source_type === 'admin' ? '#007AFF' : '#AF52DE',
+                          boxShadow: `0 0 10px ${event.source_type === 'admin' ? 'rgba(0,122,255,0.5)' : 'rgba(175,82,222,0.5)'}`
+                        }}></div>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.02em', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                          {event.source_type === 'admin' ? 'Official Update' : `Recruitment • ${event.profiles?.full_name}`}
+                        </span>
+                      </div>
+                      {event.expires_at && (
+                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#FF3B30', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <Activity size={12} /> {new Date(event.expires_at).toLocaleDateString()}
+                        </div>
+                      )}
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.8rem' }}>
-                          <span className={`badge ${event.type === 'poll' ? 'badge-purple' : event.type === 'recruitment' ? 'badge-green' : 'badge-blue'}`}>{event.type}</span>
-                          {event.expires_at && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: '#FF3B30', fontWeight: 700 }}>
-                              <Activity size={14} /> Ends {new Date(event.expires_at).toLocaleDateString()}
-                            </div>
-                          )}
-                          {event.source_type === 'student' && (
-                            <span className="badge badge-secondary">{event.mode}</span>
-                          )}
-                        </div>
-                        <h3 style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-0.03em' }}>{event.title}</h3>
-                        {event.source_type === 'student' && (
-                          <p style={{ color: 'var(--accent)', fontWeight: 700, marginTop: '0.2rem' }}>Target: {event.hackathon_name}</p>
-                        )}
-                        <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem', fontSize: '1rem', lineHeight: '1.6' }}>{event.description}</p>
-                      </div>
+                    <div style={{ marginTop: '0.5rem' }}>
+                      <h3 style={{ fontSize: '1.7rem', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.1, marginBottom: '0.6rem' }}>{event.title}</h3>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: '1.5', opacity: 0.9 }}>{event.description}</p>
                     </div>
 
                     {event.source_type === 'student' && (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                        <div style={{ background: 'var(--accent-light)', padding: '1rem', borderRadius: '14px' }}>
-                          <p style={{ fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.4rem' }}>Skills Needed</p>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
-                            {event.required_skills?.map((s, i) => <span key={i} style={{ fontSize: '0.8rem', fontWeight: 700 }}>{s}</span>)}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                          <p style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>Expertise</p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                            {event.required_skills?.slice(0, 3).map((s, i) => <span key={i} style={{ fontSize: '0.8rem', fontWeight: 600 }}>{s}</span>)}
                           </div>
                         </div>
-                        <div style={{ background: 'rgba(175, 82, 222, 0.08)', padding: '1rem', borderRadius: '14px' }}>
-                          <p style={{ fontSize: '0.65rem', color: '#AF52DE', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.4rem' }}>Open Roles</p>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
-                            {event.roles_needed?.map((r, i) => <span key={i} style={{ fontSize: '0.8rem', fontWeight: 700 }}>{r}</span>)}
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                          <p style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>Vacancies</p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                            {event.roles_needed?.slice(0, 3).map((r, i) => <span key={i} style={{ fontSize: '0.8rem', fontWeight: 600 }}>{r}</span>)}
                           </div>
                         </div>
                       </div>
@@ -1051,13 +1047,13 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                       {event.source_type === 'admin' ? (
                         <>
                           {event.know_more_url && (
-                            <button className="btn btn-secondary" onClick={() => window.open(event.know_more_url, '_blank')}>
+                            <button className="btn btn-secondary" style={{ borderRadius: '15px' }} onClick={() => window.open(event.know_more_url, '_blank')}>
                               Details <ArrowRight size={18} />
                             </button>
                           )}
                           {event.is_team_joining_enabled && (
-                            <button className="btn btn-primary" onClick={() => handleSelectEvent(event)}>
-                              {myTeamForEvent?.event_id === event.id ? 'Manage Team' : 'Build a Team'}
+                            <button className="btn btn-primary" style={{ borderRadius: '15px' }} onClick={() => handleSelectEvent(event)}>
+                              {myTeamForEvent ? 'Manage Team' : 'Build a Team'}
                             </button>
                           )}
                         </>
@@ -1065,20 +1061,20 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                         const hasRequested = event.join_requests?.find(r => r.applicant_id === profile.id);
                         if (hasRequested) {
                           return (
-                            <span className={`badge ${hasRequested.status === 'approved' ? 'badge-green' : hasRequested.status === 'rejected' ? 'badge-red' : 'badge-blue'}`} style={{ padding: '0.8rem 1rem', width: '100%', display: 'flex', justifyContent: 'center', fontSize: '0.9rem' }}>
+                            <span className={`badge ${hasRequested.status === 'approved' ? 'badge-green' : hasRequested.status === 'rejected' ? 'badge-red' : 'badge-blue'}`} style={{ padding: '0.8rem 1rem', width: '100%', display: 'flex', justifyContent: 'center', fontSize: '0.9rem', borderRadius: '15px' }}>
                                {hasRequested.status === 'approved' ? 'Accepted ✓' : hasRequested.status === 'rejected' ? 'Declined' : 'Request Pending...'}
                             </span>
                           );
                         }
                         return (
-                          <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => handleApplyToListing(event.id)}>
+                          <button className="btn btn-primary" style={{ flex: 1, borderRadius: '15px' }} onClick={() => handleApplyToListing(event.id)}>
                             Request to Join Team <Users size={18} />
                           </button>
                         );
                       })()}
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             )}
           </div>
