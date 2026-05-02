@@ -417,20 +417,25 @@ function App() {
                         <h1 className="hero-title fade-in-up delay-1">The Future of <span className="text-gradient">Student Innovation.</span></h1>
                         <p className="hero-subtitle fade-in-up delay-2">Find the perfect team, discover cutting-edge campus events, and bring your project ideas to life with our unified mechatronics collaboration engine.</p>
                         <div className="hero-actions fade-in-up delay-3">
-                          <Link to="/signup" className="btn btn-primary btn-large" style={{ textDecoration: 'none' }}>Start Your Project <ArrowRight size={20} /></Link>
-                          <Link to="/login" className="btn btn-secondary btn-large" style={{ textDecoration: 'none' }}>Sign In</Link>
-                          <a href="https://aayush-sharma-beige.vercel.app/" target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-large" style={{ textDecoration: 'none', border: '1px solid var(--glass-border)' }}>About Developer</a>
+                          <Link to="/signup" className="btn btn-primary btn-large">Start Your Project <ArrowRight size={20} /></Link>
+                          <Link to="/login" className="btn btn-secondary btn-large">Sign In</Link>
+                          <a href="https://aayush-sharma-beige.vercel.app/" target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-large btn-dev">About Developer <Sparkles size={16} style={{ marginLeft: '0.4rem' }} /></a>
                         </div>
-                        <div className="hero-credits fade-in-up delay-3">
+                        <div className="hero-credits fade-in-up delay-3" style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(10px)' }}>
                           <div className="credit-card">
                             <div className="credit-icon"><Users size={18} /></div>
                             <div className="credit-info"><span className="credit-role">Project Lead</span><strong className="credit-name">Prof. Himanshu Bhiwapurkar</strong></div>
                           </div>
                           <div className="credit-divider"></div>
-                          <div className="credit-card">
-                            <div className="credit-icon"><Activity size={18} /></div>
-                            <div className="credit-info"><span className="credit-role">Lead Developer</span><strong className="credit-name">Aayush Sharma</strong></div>
-                          </div>
+                          <a href="https://aayush-sharma-beige.vercel.app/" target="_blank" rel="noopener noreferrer" className="credit-card dev-spotlight" style={{ textDecoration: 'none' }}>
+                            <div className="credit-icon dev-icon"><Activity size={18} /></div>
+                            <div className="credit-info">
+                              <span className="credit-role" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                Lead Developer <span className="pulse-online"></span>
+                              </span>
+                              <strong className="credit-name dev-name">Aayush Sharma</strong>
+                            </div>
+                          </a>
                         </div>
                       </div>
                       <div className="hero-image-container fade-in-up delay-2">
