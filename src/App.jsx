@@ -315,9 +315,45 @@ function App() {
 
       <ErrorBoundary>
       <Suspense fallback={
-        <div className="container h-screen-center fade-in-up">
-          <Loader size={32} style={{ animation: 'spin 2s linear infinite', color: 'var(--text-secondary)' }} />
-          <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>Loading Mechatronian...</p>
+        <div className="h-screen-center" style={{ 
+          background: 'var(--bg-primary)', 
+          flexDirection: 'column',
+          gap: '1.5rem',
+          position: 'fixed',
+          inset: 0,
+          zIndex: 10000
+        }}>
+          <div className="premium-loader-container">
+            <div className="premium-loader-core">
+              <Activity size={48} color="var(--accent)" />
+            </div>
+            <div className="premium-loader-ring"></div>
+            <div className="premium-loader-ring-outer"></div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <h3 className="shimmer-text" style={{ 
+              fontSize: '1.2rem', 
+              fontWeight: 700, 
+              margin: 0,
+              letterSpacing: '-0.02em',
+              background: 'linear-gradient(90deg, var(--text-primary), var(--accent), var(--text-primary))',
+              backgroundSize: '200% auto',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              animation: 'shimmer 3s linear infinite'
+            }}>
+              Loading your dashboard
+            </h3>
+            <p style={{ 
+              fontSize: '0.85rem', 
+              color: 'var(--text-secondary)', 
+              marginTop: '0.6rem',
+              opacity: 0.7,
+              fontWeight: 500
+            }}>
+              Preparing your exclusive experience...
+            </p>
+          </div>
         </div>
       }>
         <Routes>
