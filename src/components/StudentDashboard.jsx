@@ -27,6 +27,7 @@ function StudentDashboard({ session, profile }) {
   
   // Join Team state
   const [existingTeams, setExistingTeams] = useState([]);
+  const [expandedTeamId, setExpandedTeamId] = useState(null);
   
   // Recruitment state
   const [myTeamForEvent, setMyTeamForEvent] = useState(null);
@@ -521,10 +522,17 @@ function StudentDashboard({ session, profile }) {
       .from('teams')
       .select(`
         *,
-        profiles!creator_id(full_name),
+        profiles!creator_id(full_name, dev_role),
+        team_members(
+          user_id,
+          role,
+          profiles!user_id(full_name)
+        ),
         join_requests(
           id,
           status,
+          source,
+          applicant_id,
           profiles!applicant_id(full_name)
         )
       `)
@@ -1146,27 +1154,122 @@ function StudentDashboard({ session, profile }) {
                   <Users size={48} color="var(--text-secondary)" style={{ marginBottom: '1rem', opacity: 0.5 }} />
                   <p style={{ color: 'var(--text-secondary)' }}>No teams have been formed yet. Why not lead one?</p>
                 </div>
-              ) : existingTeams.map(team => (
+              ) : existingTeams.map(team => {
+                const isCreator = team.creator_id === profile.id;
+                const isMember = team.team_members?.some(m => m.user_id === profile.id);
+                const hasRequested = team.join_requests?.some(r => r.applicant_id === profile.id);
+                const isExpanded = expandedTeamId === team.id;
+                const pendingApps = (team.join_requests || []).filter(r => r.source === 'application' && r.status === 'pending');
+                const allApps = (team.join_requests || []).filter(r => r.source === 'application');
+                const invitations = (team.join_requests || []).filter(r => r.source === 'invitation');
+                const members = team.team_members || [];
+
+                return (
                 <div key={team.id} className="glass-panel" style={{ padding: '2rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                     <div>
                       <h3 style={{ fontSize: '1.5rem', fontWeight: 800 }}>{team.icon_url} {team.team_name}</h3>
                       <p style={{ color: 'var(--accent)', fontWeight: 700 }}>Lead: {team.profiles?.full_name}</p>
+                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                        <span className="badge badge-blue" style={{ fontSize: '0.65rem' }}>{members.length} member{members.length !== 1 ? 's' : ''}</span>
+                        {pendingApps.length > 0 && <span className="badge badge-purple" style={{ fontSize: '0.65rem' }}>{pendingApps.length} pending</span>}
+                      </div>
                     </div>
-                    <button 
-                      className="btn btn-primary" 
-                      onClick={() => handleRequestJoin(team.id)}
-                      disabled={team.join_requests?.some(r => r.applicant_id === profile.id)}
-                    >
-                      {team.join_requests?.some(r => r.applicant_id === profile.id) ? 'Request Sent' : 'Request to Join'}
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      {isCreator ? (
+                        <span className="badge badge-green" style={{ padding: '0.5rem 1rem' }}>Your Team</span>
+                      ) : isMember ? (
+                        <span className="badge badge-green" style={{ padding: '0.5rem 1rem' }}>Joined ✓</span>
+                      ) : (
+                        <button 
+                          className="btn btn-primary" 
+                          onClick={() => handleRequestJoin(team.id)}
+                          disabled={hasRequested}
+                        >
+                          {hasRequested ? 'Request Sent' : 'Request to Join'}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div style={{ background: 'rgba(0,0,0,0.02)', padding: '1.2rem', borderRadius: '18px' }}>
+
+                  <div style={{ background: 'rgba(0,0,0,0.02)', padding: '1.2rem', borderRadius: '18px', marginBottom: '1rem' }}>
                     <p style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Team Requirements</p>
                     <p style={{ fontSize: '1rem', lineHeight: '1.6' }}>{team.requirements}</p>
                   </div>
+
+                  {/* Know More Toggle */}
+                  <button 
+                    className="btn btn-secondary" 
+                    style={{ width: '100%', padding: '0.7rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                    onClick={() => setExpandedTeamId(isExpanded ? null : team.id)}
+                  >
+                    {isExpanded ? '▲ Hide Details' : '▼ Know More'}
+                  </button>
+
+                  {/* Expanded Details Panel */}
+                  {isExpanded && (
+                    <div style={{ marginTop: '1.5rem', display: 'grid', gap: '1.5rem' }}>
+                      
+                      {/* Current Members */}
+                      <div style={{ background: 'rgba(52, 199, 89, 0.06)', padding: '1.5rem', borderRadius: '20px', border: '1px solid rgba(52, 199, 89, 0.15)' }}>
+                        <p style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#34C759', marginBottom: '1rem' }}>Current Members ({members.length})</p>
+                        <div style={{ display: 'grid', gap: '0.6rem' }}>
+                          {members.map((m, i) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                              <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: m.role === 'creator' ? 'var(--gradient-purple)' : 'var(--gradient-blue)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>
+                                {m.profiles?.full_name?.charAt(0) || '?'}
+                              </div>
+                              <div>
+                                <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{m.profiles?.full_name || 'Unknown'}</span>
+                                <span className={`badge ${m.role === 'creator' ? 'badge-purple' : 'badge-blue'}`} style={{ fontSize: '0.6rem', marginLeft: '0.5rem' }}>{m.role === 'creator' ? 'Lead' : 'Member'}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Join Applications */}
+                      <div style={{ background: 'rgba(0, 113, 227, 0.06)', padding: '1.5rem', borderRadius: '20px', border: '1px solid rgba(0, 113, 227, 0.15)' }}>
+                        <p style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: '1rem' }}>Join Applications ({allApps.length})</p>
+                        {allApps.length === 0 ? (
+                          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>No applications yet.</p>
+                        ) : (
+                          <div style={{ display: 'grid', gap: '0.6rem' }}>
+                            {allApps.map(req => (
+                              <div key={req.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{req.profiles?.full_name || 'Unknown'}</span>
+                                <span className={`badge ${req.status === 'approved' ? 'badge-green' : req.status === 'rejected' ? 'badge-red' : 'badge-blue'}`} style={{ fontSize: '0.65rem' }}>
+                                  {req.status}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Invitations Sent by Lead */}
+                      <div style={{ background: 'rgba(175, 82, 222, 0.06)', padding: '1.5rem', borderRadius: '20px', border: '1px solid rgba(175, 82, 222, 0.15)' }}>
+                        <p style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#AF52DE', marginBottom: '1rem' }}>Invitations from Lead ({invitations.length})</p>
+                        {invitations.length === 0 ? (
+                          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>No invitations sent yet.</p>
+                        ) : (
+                          <div style={{ display: 'grid', gap: '0.6rem' }}>
+                            {invitations.map(inv => (
+                              <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{inv.profiles?.full_name || 'Unknown'}</span>
+                                <span className={`badge ${inv.status === 'approved' ? 'badge-green' : inv.status === 'rejected' ? 'badge-red' : 'badge-blue'}`} style={{ fontSize: '0.65rem' }}>
+                                  {inv.status === 'approved' ? 'Accepted' : inv.status === 'rejected' ? 'Declined' : 'Pending'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ))}
+              );
+              })}
             </div>
           </div>
         )}
