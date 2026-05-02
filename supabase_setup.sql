@@ -301,3 +301,24 @@ DROP POLICY IF EXISTS "Users can insert own requests for listings" ON public.joi
 CREATE POLICY "Users can insert own requests for listings" ON public.join_requests FOR INSERT WITH CHECK (
     auth.uid() = applicant_id
 );
+
+-- ==========================================
+-- 6. INITIAL SEED DATA (For Production-Ready Feel)
+-- ==========================================
+
+-- Add some external hackathons for the Discovery tab
+INSERT INTO public.external_hackathons (title, description, date, link, image_url, source)
+VALUES 
+('ETHIndia 2026', 'The worlds largest Ethereum hackathon returns to Bengaluru. Build the future of Web3.', 'August 2026', 'https://ethindia.co', 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?q=80&w=1000', 'Devfolio'),
+('Google Solution Challenge', 'Solve one of the United Nations 17 Sustainable Development Goals using Google technology.', 'April 2026', 'https://developers.google.com/community/gdsc-solution-challenge', 'https://images.unsplash.com/photo-1573164713988-8665fc963095?q=80&w=1000', 'Google'),
+('Smart India Hackathon', 'A nationwide initiative to provide students a platform to solve some of the pressing problems we face in our daily lives.', 'September 2026', 'https://sih.gov.in', 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1000', 'Govt of India')
+ON CONFLICT (link) DO NOTHING;
+
+-- ==========================================
+-- 7. ADMIN OVERRIDE (Safety Net)
+-- ==========================================
+
+-- Force update the admin role for the lead professor
+UPDATE public.profiles 
+SET role = 'admin' 
+WHERE email = 'himanshubhiwapurkar@acropolis.in';

@@ -132,9 +132,10 @@ function StudentDashboard({ session, profile }) {
     } else if (activeTab === 'teams') {
       fetchMyJoinedTeams();
     }
-  }, [activeTab]);
+  }, [activeTab, profile?.id]);
 
   const fetchDiscovery = async () => {
+    if (!profile?.id) return;
     setLoadingDiscovery(true);
     const { data: hackathons } = await supabase.from('external_hackathons').select('*').order('created_at', { ascending: false });
     const { data: favs } = await supabase.from('favorites').select('hackathon_id').eq('user_id', profile.id);
@@ -148,7 +149,7 @@ function StudentDashboard({ session, profile }) {
     setLoadingListings(true);
     const { data } = await supabase
       .from('team_listings')
-      .select('*, profiles(full_name, dev_role, skills)')
+      .select('*, profiles:profiles!creator_id(full_name, dev_role, skills)')
       .order('created_at', { ascending: false });
     if (data) setListings(data);
     setLoadingListings(false);
@@ -166,36 +167,47 @@ function StudentDashboard({ session, profile }) {
 
   const handleCreateListing = async (e) => {
     e.preventDefault();
-    setIsCreatingListing(true);
-    const { error } = await supabase.from('team_listings').insert([{
-      creator_id: profile.id,
-      team_name: listingTeamName,
-      hackathon_name,
-      registration_link,
-      mode,
-      location,
-      roles_needed: rolesNeeded.split(',').map(r => r.trim()).filter(r => r),
-      required_skills: requiredSkills.split(',').map(s => s.trim()).filter(s => s),
-      min_experience: minExperience,
-      description: listingDescription
-    }]);
-
-    if (!error) {
-      alert("Post created successfully!");
-      setListingTeamName('');
-      setHackathonName('');
-      setRegistrationLink('');
-      setLocation('');
-      setRolesNeeded('');
-      setRequiredSkills('');
-      setMinExperience('');
-      setListingDescription('');
-      fetchListings();
-      setTeamAction(null);
-    } else {
-      alert(error.message);
+    if (!profile?.id) {
+      alert("Profile not loaded. Please refresh.");
+      return;
     }
-    setIsCreatingListing(false);
+    
+    setIsCreatingListing(true);
+    try {
+      const { error } = await supabase.from('team_listings').insert([{
+        creator_id: profile.id,
+        team_name: listingTeamName,
+        hackathon_name: hackathonName,
+        registration_link: registrationLink,
+        mode,
+        location,
+        roles_needed: rolesNeeded.split(',').map(r => r.trim()).filter(r => r),
+        required_skills: requiredSkills.split(',').map(s => s.trim()).filter(s => s),
+        min_experience: minExperience,
+        description: listingDescription
+      }]);
+
+      if (!error) {
+        alert("Post created successfully!");
+        setListingTeamName('');
+        setHackathonName('');
+        setRegistrationLink('');
+        setLocation('');
+        setRolesNeeded('');
+        setRequiredSkills('');
+        setMinExperience('');
+        setListingDescription('');
+        fetchListings();
+        setTeamAction(null);
+      } else {
+        alert(error.message);
+      }
+    } catch (err) {
+      console.error("LISTING ERROR:", err);
+      alert("System Error: " + err.message);
+    } finally {
+      setIsCreatingListing(false);
+    }
   };
 
   const handleApplyToListing = async (listingId) => {
@@ -271,10 +283,24 @@ function StudentDashboard({ session, profile }) {
   };
 
   const fetchActivity = async () => {
+    if (!profile?.id) return;
     // 1. Fetch requests I have sent (Requested Tab)
     const { data: myReqs } = await supabase
       .from('join_requests')
-      .select('*, teams(team_name, event_id, events(title))')
+      .select(`
+        *,
+        teams:teams!team_id(
+          team_name,
+          event_id,
+          events:events!event_id(title),
+          profiles:profiles!creator_id(whatsapp_no)
+        ),
+        team_listings:team_listings!listing_id(
+          team_name,
+          hackathon_name,
+          profiles:profiles!creator_id(whatsapp_no)
+        )
+      `)
       .eq('applicant_id', profile.id)
       .eq('source', 'application')
       .order('created_at', { ascending: false });
@@ -311,7 +337,15 @@ function StudentDashboard({ session, profile }) {
       const teamIds = myTeams.map(t => t.id);
       const { data: incomingReqs } = await supabase
         .from('join_requests')
-        .select('*, teams(team_name, event_id, events(title)), profiles(full_name, skills, branch, email, github_url, linkedin_url, resume_url)')
+        .select(`
+          *,
+          teams:teams!team_id(
+            team_name,
+            event_id,
+            events:events!event_id(title)
+          ),
+          profiles:profiles!applicant_id(full_name, skills, branch, email, github_url, linkedin_url, resume_url)
+        `)
         .in('team_id', teamIds)
         .eq('status', 'pending')
         .eq('source', 'application');
@@ -324,7 +358,7 @@ function StudentDashboard({ session, profile }) {
         const listingIds = myListings.map(l => l.id);
         const { data: listingReqs } = await supabase
             .from('join_requests')
-            .select('*, team_listings(team_name, hackathon_name), profiles(full_name, skills, branch, email, github_url, linkedin_url, resume_url)')
+            .select('*, team_listings(team_name, hackathon_name), profiles!applicant_id(full_name, skills, branch, email, github_url, linkedin_url, resume_url)')
             .in('listing_id', listingIds)
             .eq('status', 'pending');
         if (listingReqs) {
@@ -343,9 +377,31 @@ function StudentDashboard({ session, profile }) {
     // 5. Fetch all requests globally
     const { data: allReqs } = await supabase
       .from('join_requests')
-      .select('*, teams(team_name, event_id, events(title)), profiles(full_name)')
+      .select(`
+        *,
+        teams:teams!team_id(
+          team_name,
+          event_id,
+          events:events!event_id(title)
+        ),
+        profiles:profiles!applicant_id(full_name)
+      `)
       .order('created_at', { ascending: false });
     if (allReqs) setAllRequests(allReqs);
+
+    // 6. Fetch invitations received
+    const { data: myInvs } = await supabase
+      .from('join_requests')
+      .select(`
+        *,
+        teams:teams!team_id(
+          team_name,
+          profiles:profiles!creator_id(full_name)
+        )
+      `)
+      .eq('applicant_id', profile.id)
+      .eq('source', 'invitation');
+    if (myInvs) setMyInvitations(myInvs);
   };
 
   const handleSelectEvent = async (event) => {
@@ -484,8 +540,8 @@ function StudentDashboard({ session, profile }) {
       return;
     }
 
-    if (status === 'approved') {
-      // Also insert into team_members
+    if (status === 'approved' && teamId) {
+      // Also insert into team_members (only for on-campus events)
       await supabase.from('team_members').insert([
         { team_id: teamId, user_id: applicantId, role: 'member' }
       ]);
@@ -700,6 +756,12 @@ function StudentDashboard({ session, profile }) {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
                 {[1,2,3,4].map(i => <div key={i} className="glass-panel skeleton" style={{ height: '350px' }}></div>)}
               </div>
+            ) : externalHackathons.length === 0 ? (
+               <div className="glass-panel" style={{ padding: '4rem 2rem', textAlign: 'center' }}>
+                 <Globe size={48} color="var(--text-secondary)" style={{ marginBottom: '1rem', opacity: 0.5 }} />
+                 <h3 style={{ fontSize: '1.4rem', fontWeight: 800 }}>No Hackathons Found</h3>
+                 <p style={{ color: 'var(--text-secondary)' }}>We couldn't find any external events. Make sure you've run the SQL setup script.</p>
+               </div>
             ) : (
               <div style={{ display: 'grid', gap: '1.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
                 {externalHackathons.map((hack) => (
@@ -726,7 +788,7 @@ function StudentDashboard({ session, profile }) {
                     </div>
                     <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
                       <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '0.5rem' }}>{hack.title}</h3>
-                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', flex: 1, lineLineHeight: '1.6' }}>{hack.description?.slice(0, 100)}...</p>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', flex: 1, lineHeight: '1.6' }}>{hack.description?.slice(0, 100)}...</p>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem', color: 'var(--accent)', fontWeight: 700, fontSize: '0.85rem' }}>
                         <Calendar size={14} /> {hack.date}
                       </div>
@@ -930,12 +992,36 @@ function StudentDashboard({ session, profile }) {
                     ) : myRequests.map(req => (
                       <div key={req.id} className="glass-panel fade-in-up" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                          <p style={{ fontWeight: 800, fontSize: '1.1rem' }}>{req.teams?.team_name}</p>
-                          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{req.teams?.events?.title}</p>
+                          <p style={{ fontWeight: 800, fontSize: '1.1rem' }}>{req.teams?.team_name || req.team_listings?.team_name}</p>
+                          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{req.teams?.events?.title || req.team_listings?.hackathon_name}</p>
+                          {req.status === 'approved' && (
+                             <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+                                <span className="badge badge-green" style={{ fontSize: '0.65rem' }}>Contact Lead: {req.teams?.profiles?.whatsapp_no || req.team_listings?.profiles?.whatsapp_no || 'Check Profile'}</span>
+                             </div>
+                          )}
                         </div>
                         <span className={`badge ${req.status === 'approved' ? 'badge-green' : req.status === 'rejected' ? 'badge-red' : 'badge-blue'}`}>
                           {req.status}
                         </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {activityTab === 'invitations' && (
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    {(myInvitations || []).length === 0 ? (
+                        <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No invitations received.</div>
+                    ) : myInvitations.map(inv => (
+                      <div key={inv.id} className="glass-panel fade-in-up" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <p style={{ fontWeight: 800, fontSize: '1.1rem' }}>{inv.teams?.team_name}</p>
+                          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Invited by {inv.teams?.profiles?.full_name}</p>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button className="btn btn-primary" style={{ padding: '0.5rem 1rem' }} onClick={() => handleRequestResponse(inv.id, 'approved', profile.id, inv.team_id)}>Accept</button>
+                          <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem', color: '#FF3B30' }} onClick={() => handleRequestResponse(inv.id, 'rejected', profile.id, inv.team_id)}>Decline</button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -979,6 +1065,29 @@ function StudentDashboard({ session, profile }) {
                                 </div>
                             </div>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {activityTab === 'global' && (
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    {allRequests.length === 0 ? (
+                        <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No platform activity yet.</div>
+                    ) : allRequests.map(req => (
+                      <div key={req.id} className="glass-panel fade-in-up" style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                           <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Users size={16} />
+                           </div>
+                           <div>
+                              <p style={{ fontSize: '0.9rem', fontWeight: 700 }}><span style={{ color: 'var(--accent)' }}>{req.profiles?.full_name}</span> requested to join <span style={{ color: 'var(--text-primary)' }}>{req.teams?.team_name || 'a team'}</span></p>
+                              <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{new Date(req.created_at).toLocaleString()}</p>
+                           </div>
+                        </div>
+                        <span className={`badge ${req.status === 'approved' ? 'badge-green' : req.status === 'rejected' ? 'badge-red' : 'badge-blue'}`} style={{ fontSize: '0.65rem' }}>
+                          {req.status}
+                        </span>
                       </div>
                     ))}
                   </div>

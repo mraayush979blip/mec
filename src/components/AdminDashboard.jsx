@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, Calendar, PlusCircle, Activity, Users, Settings } from 'lucide-react';
+import { LogOut, Calendar, PlusCircle, Activity, Users, Settings, Globe } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 function AdminDashboard({ session, profile }) {
@@ -17,13 +17,14 @@ function AdminDashboard({ session, profile }) {
     }
   };
 
-  const tabs = ['overview', 'events', 'create'];
+  const tabs = ['overview', 'events', 'discovery', 'create'];
 
   const handleTabChange = (tab) => {
     if (tab === activeTab) return;
     triggerHaptic(15);
     setActiveTab(tab);
     setViewingTeamsFor(null);
+    setEditingHackathon(null);
   };
 
   const handleTouchStart = (e) => {
@@ -67,11 +68,68 @@ function AdminDashboard({ session, profile }) {
   const [viewingTeamsFor, setViewingTeamsFor] = useState(null);
   const [eventTeams, setEventTeams] = useState([]);
 
+  // Discovery Management State
+  const [externalHackathons, setExternalHackathons] = useState([]);
+  const [editingHackathon, setEditingHackathon] = useState(null);
+  const [hackTitle, setHackTitle] = useState('');
+  const [hackDesc, setHackDesc] = useState('');
+  const [hackDate, setHackDate] = useState('');
+  const [hackLink, setHackLink] = useState('');
+  const [hackImage, setHackImage] = useState('');
+  const [hackSource, setHackSource] = useState('');
+
   useEffect(() => {
     localStorage.setItem('admin_active_tab', activeTab);
-    fetchEvents();
-    fetchStats();
+    if (activeTab === 'overview' || activeTab === 'events') {
+       fetchEvents();
+       fetchStats();
+    } else if (activeTab === 'discovery') {
+       fetchExternalHackathons();
+    }
   }, [activeTab]);
+
+  const fetchExternalHackathons = async () => {
+    setLoading(true);
+    const { data } = await supabase.from('external_hackathons').select('*').order('created_at', { ascending: false });
+    if (data) setExternalHackathons(data);
+    setLoading(false);
+  };
+
+  const handleCreateHackathon = async (e) => {
+    e.preventDefault();
+    const hackData = {
+        title: hackTitle,
+        description: hackDesc,
+        date: hackDate,
+        link: hackLink,
+        image_url: hackImage,
+        source: hackSource
+    };
+
+    let error;
+    if (editingHackathon) {
+        const { error: updateError } = await supabase.from('external_hackathons').update(hackData).eq('id', editingHackathon.id);
+        error = updateError;
+    } else {
+        const { error: insertError } = await supabase.from('external_hackathons').insert([hackData]);
+        error = insertError;
+    }
+
+    if (!error) {
+        alert("Discovery item updated!");
+        setEditingHackathon(null);
+        setHackTitle(''); setHackDesc(''); setHackDate(''); setHackLink(''); setHackImage(''); setHackSource('');
+        fetchExternalHackathons();
+    } else {
+        alert(error.message);
+    }
+  };
+
+  const handleDeleteHackathon = async (id) => {
+      if (!window.confirm("Delete this discovery item?")) return;
+      const { error } = await supabase.from('external_hackathons').delete().eq('id', id);
+      if (!error) fetchExternalHackathons();
+  };
 
   const fetchStats = async () => {
     const { count: students } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'student');
@@ -174,8 +232,8 @@ function AdminDashboard({ session, profile }) {
       .from('teams')
       .select(`
         *,
-        profiles!teams_creator_id_fkey(full_name),
-        team_members(profiles(full_name))
+        profiles:profiles!creator_id(full_name),
+        team_members(profiles:profiles!user_id(full_name))
       `)
       .eq('event_id', event.id);
     if (data) setEventTeams(data);
@@ -218,6 +276,13 @@ function AdminDashboard({ session, profile }) {
               Events
             </button>
             <button 
+              className={`btn ${activeTab === 'discovery' ? 'btn-secondary' : ''}`}
+              style={{ background: activeTab === 'discovery' ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', padding: '0.5rem 1rem' }}
+              onClick={() => handleTabChange('discovery')}
+            >
+              Discovery
+            </button>
+            <button 
               className={`btn ${activeTab === 'create' ? 'btn-secondary' : ''}`}
               style={{ background: activeTab === 'create' ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', padding: '0.5rem 1rem' }}
               onClick={() => handleTabChange('create')}
@@ -241,6 +306,10 @@ function AdminDashboard({ session, profile }) {
         <div className={`mobile-nav-item ${activeTab === 'events' ? 'active' : ''}`} onClick={() => handleTabChange('events')}>
           <Calendar size={20} />
           <span>Events</span>
+        </div>
+        <div className={`mobile-nav-item ${activeTab === 'discovery' ? 'active' : ''}`} onClick={() => handleTabChange('discovery')}>
+          <Globe size={20} />
+          <span>Discovery</span>
         </div>
         <div className={`mobile-nav-item ${activeTab === 'create' ? 'active' : ''}`} onClick={() => handleTabChange('create')}>
           <PlusCircle size={20} />
@@ -280,6 +349,44 @@ function AdminDashboard({ session, profile }) {
           </div>
         )}
         
+        {activeTab === 'discovery' && (
+           <div className="fade-in-up">
+              <h1 className="title" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>Global Discovery</h1>
+              <p className="subtitle">Manage external hackathons displayed to all students.</p>
+
+              <div className="glass-panel" style={{ padding: '2rem', marginBottom: '3rem' }}>
+                  <h3 style={{ marginBottom: '1.5rem' }}>{editingHackathon ? 'Edit Item' : 'Add New Hackathon'}</h3>
+                  <form onSubmit={handleCreateHackathon} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                      <input className="glass-input" placeholder="Title" value={hackTitle} onChange={e=>setHackTitle(e.target.value)} required />
+                      <input className="glass-input" placeholder="Source (e.g. Devfolio)" value={hackSource} onChange={e=>setHackSource(e.target.value)} />
+                      <input className="glass-input" placeholder="Date" value={hackDate} onChange={e=>setHackDate(e.target.value)} />
+                      <input className="glass-input" placeholder="External Link" value={hackLink} onChange={e=>setHackLink(e.target.value)} required />
+                      <input className="glass-input" placeholder="Image URL" value={hackImage} onChange={e=>setHackImage(e.target.value)} />
+                      <input className="glass-input" placeholder="Short Description" value={hackDesc} onChange={e=>setHackDesc(e.target.value)} />
+                      <button type="submit" className="btn btn-primary" style={{ gridColumn: 'span 2' }}>{editingHackathon ? 'Update' : 'Add to Discovery'}</button>
+                  </form>
+              </div>
+
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                  {externalHackathons.map(hack => (
+                      <div key={hack.id} className="glass-panel" style={{ padding: '1.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                              <p style={{ fontWeight: 800 }}>{hack.title}</p>
+                              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{hack.source} • {hack.date}</p>
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button className="btn btn-secondary" onClick={() => {
+                                  setEditingHackathon(hack);
+                                  setHackTitle(hack.title); setHackDesc(hack.description); setHackDate(hack.date); setHackLink(hack.link); setHackImage(hack.image_url); setHackSource(hack.source);
+                              }}>Edit</button>
+                              <button className="btn btn-secondary" style={{ color: '#FF3B30' }} onClick={() => handleDeleteHackathon(hack.id)}>Delete</button>
+                          </div>
+                      </div>
+                  ))}
+              </div>
+           </div>
+        )}
+
         {activeTab === 'events' && !viewingTeamsFor && (
           <div className="fade-in-up">
             <h1 className="title" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>Admin Dashboard</h1>
