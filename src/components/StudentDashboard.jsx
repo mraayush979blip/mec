@@ -134,8 +134,6 @@ function StudentDashboard({ session, profile }) {
       fetchMyTeams();
     } else if (activeTab === 'activity') {
       fetchActivity();
-    } else if (activeTab === 'teams') {
-      fetchMyJoinedTeams();
     }
   }, [activeTab, profile?.id]);
 
@@ -160,7 +158,6 @@ function StudentDashboard({ session, profile }) {
     if (error) {
       console.error("Error fetching listings:", error);
     } else {
-      console.log("Fetched listings:", data);
       setListings(data || []);
     }
     setLoadingListings(false);
@@ -277,13 +274,7 @@ function StudentDashboard({ session, profile }) {
     }
   };
 
-  const fetchMyJoinedTeams = async () => {
-    const { data } = await supabase
-      .from('team_members')
-      .select('teams(*, events(title), profiles!teams_creator_id_fkey(full_name, whatsapp_no), team_members(profiles(full_name, email, whatsapp_no, linkedin_url, github_url)))')
-      .eq('user_id', profile.id);
-    if (data) setMyJoinedTeams(data.map(tm => tm.teams));
-  };
+  // fetchMyTeams (defined below) handles both created and joined teams
 
   const handleSaveProfile = async () => {
     setSaving(true);
@@ -333,26 +324,7 @@ function StudentDashboard({ session, profile }) {
       .order('created_at', { ascending: false });
     if (myReqs) setMyRequests(myReqs);
 
-    // 2. Fetch invitations sent to me (Invitations Tab)
-    const { data: myInvites, error: inviteError } = await supabase
-      .from('join_requests')
-      .select(`
-        *,
-        teams (
-          team_name,
-          creator_id,
-          events (title),
-          profiles:creator_id (full_name)
-        )
-      `)
-      .eq('applicant_id', profile.id)
-      .eq('source', 'invitation')
-      .order('created_at', { ascending: false });
-    
-    if (inviteError) {
-      console.error("INVITE ERROR:", inviteError);
-    }
-    if (myInvites) setMyInvitations(myInvites);
+    // 2. Invitations are fetched in step 6 below
 
     // 3. Fetch requests sent to my teams & listings (Approve Request Tab)
     const { data: myTeams } = await supabase.from('teams').select('id').eq('creator_id', profile.id);
@@ -452,7 +424,7 @@ function StudentDashboard({ session, profile }) {
   // Clear fresh login flag after first load
   useEffect(() => {
     if (localStorage.getItem('fresh_login') === 'true') {
-      setActiveTab('events');
+      navigate('/', { replace: true });
       localStorage.removeItem('fresh_login');
     }
   }, []);

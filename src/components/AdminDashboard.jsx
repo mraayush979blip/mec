@@ -85,7 +85,6 @@ function AdminDashboard({ session, profile }) {
   const [hackSource, setHackSource] = useState('');
 
   useEffect(() => {
-    localStorage.setItem('admin_active_tab', activeTab);
     if (activeTab === 'overview' || activeTab === 'events') {
        fetchEvents();
        fetchStats();
