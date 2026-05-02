@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Sparkles, Users, Calendar, ArrowRight, Loader, Eye, EyeOff, Activity } from 'lucide-react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from './lib/supabase';
-import StudentDashboard from './components/StudentDashboard';
-import AdminDashboard from './components/AdminDashboard';
 import ErrorBoundary from './components/ErrorBoundary';
+
+const StudentDashboard = lazy(() => import('./components/StudentDashboard'));
+const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
 
 function App() {
   const [authFlow, setAuthFlow] = useState('landing'); // 'landing', 'login', 'signup', 'verify_otp', 'forgot_password', 'verify_forgot', 'reset_password'
@@ -221,38 +222,45 @@ function App() {
 
     return (
       <ErrorBoundary>
-        <Routes>
-          {/* Main Dashboard / Landing */}
-          <Route path="/" element={
-            profile.role === 'admin' ? (
-              <Navigate to="/admin/overview" replace />
-            ) : (
-              <StudentDashboard session={session} profile={profile} />
-            )
-          } />
+        <Suspense fallback={
+          <div className="container h-screen-center fade-in-up">
+            <Loader size={32} style={{ animation: 'spin 2s linear infinite', color: 'var(--text-secondary)' }} />
+            <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>Initializing Dashboard...</p>
+          </div>
+        }>
+          <Routes>
+            {/* Main Dashboard / Landing */}
+            <Route path="/" element={
+              profile.role === 'admin' ? (
+                <Navigate to="/admin/overview" replace />
+              ) : (
+                <StudentDashboard session={session} profile={profile} />
+              )
+            } />
 
-          {/* Admin Specific Routes */}
-          <Route path="/admin/*" element={
-            profile.role === 'admin' ? (
-              <AdminDashboard session={session} profile={profile} />
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } />
+            {/* Admin Specific Routes */}
+            <Route path="/admin/*" element={
+              profile.role === 'admin' ? (
+                <AdminDashboard session={session} profile={profile} />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            } />
 
-          {/* Student Specific Tab Routes */}
-          <Route path="/:tab" element={
-            profile.role !== 'admin' ? (
-              <StudentDashboard session={session} profile={profile} />
-            ) : (
-              <Navigate to="/admin/overview" replace />
-            )
-          } />
+            {/* Student Specific Tab Routes */}
+            <Route path="/:tab" element={
+              profile.role !== 'admin' ? (
+                <StudentDashboard session={session} profile={profile} />
+              ) : (
+                <Navigate to="/admin/overview" replace />
+              )
+            } />
 
-          {/* Global Redirects */}
-          <Route path="/login" element={<Navigate to="/" replace />} />
-          <Route path="/signup" element={<Navigate to="/" replace />} />
-        </Routes>
+            {/* Global Redirects */}
+            <Route path="/login" element={<Navigate to="/" replace />} />
+            <Route path="/signup" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </ErrorBoundary>
     );
   }

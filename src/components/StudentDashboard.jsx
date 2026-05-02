@@ -98,32 +98,59 @@ function StudentDashboard({ session, profile }) {
     triggerHaptic(15);
   };
 
-  // Prefetch all critical data on first mount
-  const refetchAll = () => {
+  // Prioritized loading: Active tab first, then background prefetch for others
+  const fetchActiveTabData = async () => {
     if (!profile?.id) return;
-    Promise.all([
-      fetchEvents(),
-      fetchListings(),
-      fetchActivity(),
-      fetchMyTeams(),
-      fetchDiscovery()
-    ]).catch(console.error);
+    
+    if (activeTab === 'events') await fetchEvents();
+    else if (activeTab === 'discovery') await fetchDiscovery();
+    else if (activeTab === 'find_member') await fetchListings();
+    else if (activeTab === 'activity') await fetchActivity();
+    else if (activeTab === 'teams') await fetchMyTeams();
+  };
+
+  const prefetchRemainingData = () => {
+    if (!profile?.id) return;
+    
+    // List of all fetchers
+    const allFetchers = {
+      events: fetchEvents,
+      discovery: fetchDiscovery,
+      find_member: fetchListings,
+      activity: fetchActivity,
+      teams: fetchMyTeams
+    };
+
+    // Filter out the one we already loaded
+    const remaining = Object.entries(allFetchers)
+      .filter(([key]) => key !== activeTab)
+      .map(([_, fetcher]) => fetcher());
+
+    Promise.all(remaining).catch(console.error);
   };
 
   useEffect(() => {
-    refetchAll();
+    if (!profile?.id) return;
+    
+    const loadData = async () => {
+      await fetchActiveTabData();
+      prefetchRemainingData();
+    };
+    
+    loadData();
   }, [profile?.id]);
 
   // Re-fetch data when user returns from lock screen or switches back to the app
   useEffect(() => {
-    const handleVisibilityChange = () => {
+    const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible' && profile?.id) {
-        refetchAll();
+        await fetchActiveTabData();
+        prefetchRemainingData();
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [profile?.id]);
+  }, [profile?.id, activeTab]);
 
   // Tab-specific refresh (only re-fetches on tab switch, data is already cached from above)
   useEffect(() => {

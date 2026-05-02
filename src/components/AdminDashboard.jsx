@@ -56,22 +56,37 @@ function AdminDashboard({ session, profile }) {
   const [hackImage, setHackImage] = useState('');
   const [hackSource, setHackSource] = useState('');
 
-  useEffect(() => {
+  const fetchActiveTabData = async () => {
     if (activeTab === 'overview' || activeTab === 'events') {
-       fetchEvents();
-       fetchStats();
+       await Promise.all([fetchEvents(), fetchStats()]);
     } else if (activeTab === 'discovery') {
-       fetchExternalHackathons();
+       await fetchExternalHackathons();
     }
+  };
+
+  const prefetchRemainingData = () => {
+    if (activeTab !== 'discovery') {
+      fetchExternalHackathons().catch(console.error);
+    }
+    if (activeTab === 'discovery') {
+      Promise.all([fetchEvents(), fetchStats()]).catch(console.error);
+    }
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      await fetchActiveTabData();
+      prefetchRemainingData();
+    };
+    loadData();
   }, [activeTab]);
 
   // Re-fetch data when user returns from lock screen
   useEffect(() => {
-    const handleVisibilityChange = () => {
+    const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible') {
-        fetchEvents();
-        fetchStats();
-        if (activeTab === 'discovery') fetchExternalHackathons();
+        await fetchActiveTabData();
+        prefetchRemainingData();
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
