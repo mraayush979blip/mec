@@ -1,4 +1,4 @@
-const CACHE_NAME = 'devmatchups-v2';
+const CACHE_NAME = 'mechatronian-v1';
 
 // Install: skip waiting to activate immediately
 self.addEventListener('install', event => {

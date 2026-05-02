@@ -65,6 +65,19 @@ function AdminDashboard({ session, profile }) {
     }
   }, [activeTab]);
 
+  // Re-fetch data when user returns from lock screen
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchEvents();
+        fetchStats();
+        if (activeTab === 'discovery') fetchExternalHackathons();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [activeTab]);
+
   const fetchExternalHackathons = async () => {
     setLoading(true);
     const { data } = await supabase.from('external_hackathons').select('*').order('created_at', { ascending: false });
@@ -232,7 +245,7 @@ function AdminDashboard({ session, profile }) {
               <Settings size={22} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Matchups</span>
+              <span style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Mechatronian</span>
               <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: '#34C759', letterSpacing: '0.1em' }}>Admin Console</span>
             </div>
           </div>
@@ -272,6 +285,10 @@ function AdminDashboard({ session, profile }) {
         <div className={`mobile-nav-item ${activeTab === 'create' ? 'active' : ''}`} onClick={() => handleTabChange('create')}>
           <PlusCircle size={20} />
           <span>Create</span>
+        </div>
+        <div className="mobile-nav-item" style={{ color: '#FF3B30' }} onClick={() => supabase.auth.signOut()}>
+          <LogOut size={20} />
+          <span>Sign Out</span>
         </div>
       </div>
 

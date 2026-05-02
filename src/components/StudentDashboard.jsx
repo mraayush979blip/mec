@@ -99,9 +99,8 @@ function StudentDashboard({ session, profile }) {
   };
 
   // Prefetch all critical data on first mount
-  useEffect(() => {
+  const refetchAll = () => {
     if (!profile?.id) return;
-    // Fire all fetches in parallel on first load
     Promise.all([
       fetchEvents(),
       fetchListings(),
@@ -109,6 +108,21 @@ function StudentDashboard({ session, profile }) {
       fetchMyTeams(),
       fetchDiscovery()
     ]).catch(console.error);
+  };
+
+  useEffect(() => {
+    refetchAll();
+  }, [profile?.id]);
+
+  // Re-fetch data when user returns from lock screen or switches back to the app
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && profile?.id) {
+        refetchAll();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [profile?.id]);
 
   // Tab-specific refresh (only re-fetches on tab switch, data is already cached from above)
@@ -663,8 +677,8 @@ function StudentDashboard({ session, profile }) {
               <Users size={22} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Matchups</span>
-              <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent)', letterSpacing: '0.1em' }}>Student Console</span>
+              <span style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Mechatronian</span>
+              <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent)', letterSpacing: '0.1em' }}>Team Hub</span>
             </div>
           </div>
           
@@ -1700,7 +1714,7 @@ function StudentDashboard({ session, profile }) {
       </main>
 
       <footer className="container" style={{ padding: '2rem', textAlign: 'center', opacity: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
-        &copy; 2026 DevMatchups Platform. Built for Excellence.
+        &copy; 2026 Mechatronian Platform. Built for Excellence.
       </footer>
     </div>
   );
