@@ -38,6 +38,7 @@ const AuthLayout = ({ children }) => (
 function App() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
 
   useEffect(() => {
     // PWA Install logic
@@ -51,14 +52,24 @@ function App() {
       setDeferredPrompt(null);
     });
 
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
       setIsInstalled(true);
     }
+
+    // Auto-show install reminder if not installed after 4 seconds
+    const timer = setTimeout(() => {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      if (!isStandalone) {
+        setShowInstallBanner(true);
+      }
+    }, 4000);
 
     // Notification permission logic
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
+
+    return () => clearTimeout(timer);
   }, []);
   const [authFlow, setAuthFlow] = useState('landing'); // 'landing', 'login', 'signup', 'verify_otp', 'forgot_password', 'verify_forgot', 'reset_password'
   const [email, setEmail] = useState('');
@@ -308,8 +319,85 @@ function App() {
     );
   }
 
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+  const handleInstallClick = async () => {
+    setShowInstallBanner(false);
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`User response to the install prompt: ${outcome}`);
+      setDeferredPrompt(null);
+    } else if (isIOS) {
+      alert('To install on iOS:\n1. Tap the Share button in Safari\n2. Scroll down and tap "Add to Home Screen"');
+    } else {
+      alert('Installation prompt not available. Try adding to home screen via your browser menu.');
+    }
+  };
+
   return (
-    <ErrorBoundary>
+    <div style={{ position: 'relative', minHeight: '100vh' }}>
+      {/* Premium iOS-style Install Banner */}
+      {showInstallBanner && !isInstalled && (
+        <div className="fade-in-up" style={{
+          position: 'fixed',
+          bottom: '20px',
+          left: '20px',
+          right: '20px',
+          zIndex: 9999,
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(10px)',
+          padding: '1rem 1.2rem',
+          borderRadius: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          boxShadow: '0 15px 40px rgba(0,0,0,0.15)',
+          border: '1px solid rgba(0,0,0,0.05)',
+          animation: 'slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ 
+              width: '45px', height: '45px', 
+              background: 'var(--accent)', 
+              borderRadius: '12px', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(0,113,227,0.2)'
+            }}>
+              <Activity size={24} color="white" />
+            </div>
+            <div style={{ textAlign: 'left' }}>
+              <h4 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: '#1d1d1f' }}>Mechatronian Hub</h4>
+              <p style={{ fontSize: '0.8rem', color: '#86868b', margin: 0 }}>Install for the best experience</p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button 
+              onClick={() => setShowInstallBanner(false)}
+              style={{ padding: '0.6rem 1rem', background: 'transparent', border: 'none', color: '#86868b', cursor: 'pointer' }}
+            >
+              Later
+            </button>
+            <button 
+              onClick={handleInstallClick}
+              style={{ 
+                padding: '0.6rem 1.2rem', 
+                background: 'var(--accent)', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '15px',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                cursor: 'pointer'
+              }}
+            >
+              Install
+            </button>
+          </div>
+        </div>
+      )}
+
+      <ErrorBoundary>
       <Suspense fallback={
         <div className="container h-screen-center fade-in-up">
           <Loader size={32} style={{ animation: 'spin 2s linear infinite', color: 'var(--text-secondary)' }} />
@@ -463,7 +551,8 @@ function App() {
         </Routes>
       </Suspense>
     </ErrorBoundary>
-  );
+  </div>
+);
 }
 
 export default App;

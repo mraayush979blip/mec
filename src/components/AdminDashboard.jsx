@@ -195,6 +195,27 @@ function AdminDashboard({ session, profile }) {
     setLoading(false);
   };
 
+  const sendPushNotification = async (eventTitle) => {
+    try {
+      await fetch('https://onesignal.com/api/v1/notifications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Basic os_v2_app_52d4ulf5rbf37ktrcwwgy36xvxlydgw76uyerkfj4o6ty5fcxcbgrydvgfrugsl5x6epu4viwzl4bgpwn3yubphdedmqvhl4pwmwfxy'
+        },
+        body: JSON.stringify({
+          app_id: "ee87ca2c-bd88-4bbf-aa71-15ac6c6fd7ad",
+          included_segments: ["All"],
+          headings: { "en": "New MECHA Activity! 🚀" },
+          contents: { "en": `${eventTitle} has been posted. Open the app to join now!` },
+          url: "https://mechatronics-phi.vercel.app/"
+        })
+      });
+    } catch (error) {
+      console.error("Push Error:", error);
+    }
+  };
+
   const handleCreateEvent = async (e) => {
     e.preventDefault();
     if (!title) return;
@@ -228,6 +249,7 @@ function AdminDashboard({ session, profile }) {
       resetForm();
       handleTabChange('events');
       fetchEvents();
+      if (!editingEvent) sendPushNotification(title);
       alert(editingEvent ? "Event updated successfully!" : "Event created successfully!");
     } else {
       alert("Error: " + error.message);
