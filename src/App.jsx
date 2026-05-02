@@ -71,11 +71,16 @@ function App() {
   const [profile, setProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) fetchProfile(session.user.id);
+      if (session) {
+        fetchProfile(session.user.id).finally(() => setInitializing(false));
+      } else {
+        setInitializing(false);
+      }
     });
 
     const {
@@ -356,7 +361,17 @@ function App() {
           </div>
         </div>
       }>
-        <Routes>
+        {initializing ? (
+          <div className="h-screen-center" style={{ background: 'var(--bg-primary)' }}>
+            <div className="premium-loader-container">
+              <div className="premium-loader-core">
+                <Activity size={48} color="var(--accent)" />
+              </div>
+              <div className="premium-loader-ring"></div>
+            </div>
+          </div>
+        ) : (
+          <Routes>
           {/* LANDING PAGE */}
           <Route path="/" element={
             session ? (
@@ -501,6 +516,7 @@ function App() {
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        )}
       </Suspense>
     </ErrorBoundary>
   </div>
