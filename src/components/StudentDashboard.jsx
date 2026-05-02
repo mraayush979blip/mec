@@ -335,6 +335,36 @@ function StudentDashboard({ session, profile }) {
     }
   };
 
+  const compressImage = (file, maxWidth = 500, quality = 0.7) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth) {
+            height = (maxWidth / width) * height;
+            width = maxWidth;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob((blob) => {
+            resolve(blob);
+          }, 'image/jpeg', quality);
+        };
+      };
+    });
+  };
+
   const handleAvatarUpload = async (event) => {
     try {
       setUploadingAvatar(true);
@@ -344,13 +374,16 @@ function StudentDashboard({ session, profile }) {
       }
 
       const file = event.target.files[0];
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${session.user.id}/${Math.random()}.${fileExt}`;
+      const compressedBlob = await compressImage(file);
+      const fileName = `${session.user.id}/${Date.now()}.jpg`;
       const filePath = `${fileName}`;
 
       let { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, compressedBlob, { 
+          upsert: true,
+          contentType: 'image/jpeg'
+        });
 
       if (uploadError) {
         throw uploadError;
