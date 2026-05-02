@@ -26,7 +26,9 @@ function AdminDashboard({ session, profile }) {
     }
   };
 
-  const tabs = ['overview', 'events', 'discovery', 'create'];
+  const tabs = ['overview', 'events', 'users', 'discovery', 'create'];
+  const [allUsers, setAllUsers] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleTabChange = (tab) => {
     navigate(`/admin/${tab}`);
@@ -60,11 +62,39 @@ function AdminDashboard({ session, profile }) {
   const [hackImage, setHackImage] = useState('');
   const [hackSource, setHackSource] = useState('');
 
+  const fetchUsers = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('role', 'student')
+      .order('full_name');
+    if (data) setAllUsers(data);
+    setLoading(false);
+  };
+
+  const handleToggleBlock = async (userId, currentStatus) => {
+    if (!window.confirm(`Are you sure you want to ${currentStatus ? 'unblock' : 'block'} this user?`)) return;
+    
+    const { error } = await supabase
+      .from('profiles')
+      .update({ is_blocked: !currentStatus })
+      .eq('id', userId);
+      
+    if (!error) {
+      setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, is_blocked: !currentStatus } : u));
+    } else {
+      alert("Error: " + error.message);
+    }
+  };
+
   const fetchActiveTabData = async () => {
     if (activeTab === 'overview' || activeTab === 'events') {
        await Promise.all([fetchEvents(), fetchStats()]);
     } else if (activeTab === 'discovery') {
        await fetchExternalHackathons();
+    } else if (activeTab === 'users') {
+       await fetchUsers();
     }
   };
 
@@ -301,6 +331,10 @@ function AdminDashboard({ session, profile }) {
           <Globe size={20} />
           <span>Discovery</span>
         </div>
+        <div className={`mobile-nav-item ${activeTab === 'users' ? 'active' : ''}`} onClick={() => handleTabChange('users')}>
+          <Users size={20} />
+          <span>Users</span>
+        </div>
         <div className={`mobile-nav-item ${activeTab === 'create' ? 'active' : ''}`} onClick={() => handleTabChange('create')}>
           <PlusCircle size={20} />
           <span>Create</span>
@@ -473,6 +507,99 @@ function AdminDashboard({ session, profile }) {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'users' && (
+          <div className="fade-in-up">
+            <h1 className="title" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>User Management</h1>
+            <p className="subtitle">View all registered students and manage their access status.</p>
+
+            <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <input 
+                  type="text" 
+                  className="glass-input" 
+                  placeholder="Search by name, email or branch..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{ paddingLeft: '3rem' }}
+                />
+                <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }}>
+                  <Users size={20} />
+                </div>
+              </div>
+              <div style={{ background: 'var(--accent-light)', padding: '0.8rem 1.2rem', borderRadius: '15px', color: 'var(--accent)', fontWeight: 800 }}>
+                {allUsers.length} Total Students
+              </div>
+            </div>
+
+            {loading ? (
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                 {[1,2,3,4,5].map(i => <Skeleton key={i} width="100%" height="80px" borderRadius="18px" />)}
+              </div>
+            ) : (
+              <div className="glass-panel" style={{ padding: '0', overflow: 'hidden' }}>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--glass-border)' }}>
+                      <tr>
+                        <th style={{ padding: '1.2rem 1.5rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Student</th>
+                        <th style={{ padding: '1.2rem 1.5rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Branch</th>
+                        <th style={{ padding: '1.2rem 1.5rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Contact</th>
+                        <th style={{ padding: '1.2rem 1.5rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Status</th>
+                        <th style={{ padding: '1.2rem 1.5rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allUsers
+                        .filter(u => 
+                          u.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          u.branch?.toLowerCase().includes(searchQuery.toLowerCase())
+                        )
+                        .map((user) => (
+                        <tr key={user.id} style={{ borderBottom: '1px solid var(--glass-border)', transition: 'background 0.2s' }} className="user-row-hover">
+                          <td style={{ padding: '1.2rem 1.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                              <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
+                                {user.full_name?.charAt(0)}
+                              </div>
+                              <div>
+                                <p style={{ fontWeight: 700, fontSize: '0.95rem' }}>{user.full_name}</p>
+                                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{user.dev_role || 'No Role Set'}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td style={{ padding: '1.2rem 1.5rem', fontSize: '0.9rem', fontWeight: 600 }}>{user.branch || 'N/A'}</td>
+                          <td style={{ padding: '1.2rem 1.5rem', fontSize: '0.9rem' }}>{user.whatsapp_no || 'N/A'}</td>
+                          <td style={{ padding: '1.2rem 1.5rem' }}>
+                            <span className={`badge ${user.is_blocked ? 'badge-red' : 'badge-green'}`} style={{ fontSize: '0.7rem' }}>
+                              {user.is_blocked ? 'Blocked' : 'Active'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '1.2rem 1.5rem' }}>
+                            <button 
+                              className="btn" 
+                              style={{ 
+                                background: user.is_blocked ? 'rgba(52, 199, 89, 0.1)' : 'rgba(255, 59, 48, 0.1)', 
+                                color: user.is_blocked ? '#34C759' : '#FF3B30',
+                                padding: '0.5rem 1rem',
+                                fontSize: '0.8rem',
+                                borderRadius: '10px',
+                                fontWeight: 700
+                              }}
+                              onClick={() => handleToggleBlock(user.id, user.is_blocked)}
+                            >
+                              {user.is_blocked ? 'Unblock' : 'Block Access'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>

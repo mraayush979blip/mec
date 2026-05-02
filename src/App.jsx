@@ -1,6 +1,6 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Sparkles, Users, Calendar, ArrowRight, Loader, Eye, EyeOff, Activity } from 'lucide-react';
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -108,7 +108,18 @@ function App() {
       .select('*')
       .eq('id', userId)
       .single();
-    if (data) setProfile(data);
+    
+    if (data) {
+      if (data.is_blocked) {
+        await supabase.auth.signOut();
+        setProfile(null);
+        setErrorMsg('Your account has been suspended by an administrator. Please contact support.');
+        setAuthFlow('login');
+        setLoadingProfile(false);
+        return;
+      }
+      setProfile(data);
+    }
     setLoadingProfile(false);
   };
 
@@ -231,7 +242,7 @@ function App() {
         <div className="container">
           <nav>
             <div className="nav-brand">Mechatronian</div>
-            <button className="btn btn-secondary" style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }} onClick={() => navigate('/')}>Home</button>
+            <Link to="/" className="btn btn-secondary" style={{ padding: '0.4rem 1rem', fontSize: '0.85rem', textDecoration: 'none' }}>Home</Link>
           </nav>
         </div>
       </header>
@@ -272,7 +283,7 @@ function App() {
                   <div className="container">
                     <nav>
                       <div className="nav-brand">Mechatronian</div>
-                      <button className="btn btn-primary" style={{ padding: '0.4rem 1.2rem', fontSize: '0.85rem' }} onClick={() => navigate('/login')}>Sign In</button>
+                      <Link to="/login" className="btn btn-primary" style={{ padding: '0.4rem 1.2rem', fontSize: '0.85rem', textDecoration: 'none' }}>Sign In</Link>
                     </nav>
                   </div>
                 </header>
@@ -284,8 +295,8 @@ function App() {
                         <h1 className="hero-title fade-in-up delay-1">The Future of <span className="text-gradient">Student Innovation.</span></h1>
                         <p className="hero-subtitle fade-in-up delay-2">Find the perfect team, discover cutting-edge campus events, and bring your project ideas to life with our unified mechatronics collaboration engine.</p>
                         <div className="hero-actions fade-in-up delay-3">
-                          <button className="btn btn-primary btn-large" onClick={() => navigate('/signup')}>Start Your Project <ArrowRight size={20} /></button>
-                          <button className="btn btn-secondary btn-large" onClick={() => navigate('/login')}>Sign In</button>
+                          <Link to="/signup" className="btn btn-primary btn-large" style={{ textDecoration: 'none' }}>Start Your Project <ArrowRight size={20} /></Link>
+                          <Link to="/login" className="btn btn-secondary btn-large" style={{ textDecoration: 'none' }}>Sign In</Link>
                         </div>
                         <div className="hero-credits fade-in-up delay-3">
                           <div className="credit-card">
@@ -332,7 +343,7 @@ function App() {
                   </div>
                   <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={loading}>{loading ? 'Signing In...' : 'Sign In'} <ArrowRight size={18} /></button>
                 </form>
-                <p style={{ marginTop: '2rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Don't have an account? <span style={{ color: 'var(--accent)', cursor: 'pointer', fontWeight: 600 }} onClick={() => navigate('/signup')}>Sign up here</span></p>
+                <p style={{ marginTop: '2rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Don't have an account? <Link to="/signup" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Sign up here</Link></p>
               </AuthLayout>
             )
           } />
@@ -382,7 +393,7 @@ function App() {
                     {loading ? 'Processing...' : (isVerified ? 'Create Account' : 'Verify Email Above')} {!loading && <ArrowRight size={18} />}
                   </button>
                 </form>
-                <p style={{ marginTop: '2rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Already have an account? <span style={{ color: 'var(--accent)', cursor: 'pointer', fontWeight: 600 }} onClick={() => navigate('/login')}>Log in here</span></p>
+                <p style={{ marginTop: '2rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Already have an account? <Link to="/login" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Log in here</Link></p>
               </AuthLayout>
             )
           } />
