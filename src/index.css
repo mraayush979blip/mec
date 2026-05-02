@@ -738,8 +738,10 @@ body {
     margin-top: 2rem;
   }
   .floating-card {
-    display: none; /* Hide floating cards on mobile to prevent clutter */
+    scale: 0.8;
   }
+  .card-1 { left: -5%; top: 10%; }
+  .card-2 { right: -5%; bottom: 10%; }
 
   .dashboard-title { font-size: 1.8rem; }
   .glass-panel { border-radius: 24px; padding: 1.5rem !important; }
