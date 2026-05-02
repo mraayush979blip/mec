@@ -83,8 +83,6 @@ function StudentDashboard({ session, profile }) {
   const [formDevRole, setFormDevRole] = useState(profile?.dev_role || '');
   const [formResume, setFormResume] = useState(profile?.resume_url || '');
 
-  const [touchStart, setTouchStart] = useState(null);
-  const [touchEnd, setTouchEnd] = useState(null);
 
   const triggerHaptic = (pattern = 10) => {
     if (window.navigator && window.navigator.vibrate) {
@@ -100,47 +98,27 @@ function StudentDashboard({ session, profile }) {
     triggerHaptic(15);
   };
 
-  const handleTouchStart = (e) => {
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchMove = (e) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > 70;
-    const isRightSwipe = distance < -70;
-
-    const currentIndex = tabs.indexOf(activeTab);
-
-    if (isLeftSwipe && currentIndex < tabs.length - 1) {
-      handleTabChange(tabs[currentIndex + 1]);
-    } else if (isRightSwipe && currentIndex > 0) {
-      handleTabChange(tabs[currentIndex - 1]);
-    }
-
-    setTouchStart(null);
-    setTouchEnd(null);
-  };
-
+  // Prefetch all critical data on first mount
   useEffect(() => {
+    if (!profile?.id) return;
+    // Fire all fetches in parallel on first load
+    Promise.all([
+      fetchEvents(),
+      fetchListings(),
+      fetchActivity(),
+      fetchMyTeams(),
+      fetchDiscovery()
+    ]).catch(console.error);
+  }, [profile?.id]);
+
+  // Tab-specific refresh (only re-fetches on tab switch, data is already cached from above)
+  useEffect(() => {
+    if (!profile?.id) return;
     if (activeTab === 'events') {
-      fetchEvents();
       setSelectedEvent(null);
       setTeamAction(null);
-    } else if (activeTab === 'discovery') {
-      fetchDiscovery();
-    } else if (activeTab === 'find_member') {
-      fetchListings();
-    } else if (activeTab === 'teams') {
-      fetchMyTeams();
-    } else if (activeTab === 'activity') {
-      fetchActivity();
     }
-  }, [activeTab, profile?.id]);
+  }, [activeTab]);
 
   const fetchDiscovery = async () => {
     if (!profile?.id) return;
@@ -671,9 +649,6 @@ function StudentDashboard({ session, profile }) {
     <div 
       className="dashboard-root"
       style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
     >
       
       <div className="background-blobs">
@@ -731,13 +706,13 @@ function StudentDashboard({ session, profile }) {
           <PlusCircle size={20} />
           <span>Recruit</span>
         </div>
-        <div className={`mobile-nav-item ${activeTab === 'teams' ? 'active' : ''}`} onClick={() => handleTabChange('teams')}>
-          <Shield size={20} />
-          <span>Teams</span>
-        </div>
         <div className={`mobile-nav-item ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => handleTabChange('activity')}>
           <Activity size={20} />
           <span>Activity</span>
+        </div>
+        <div className={`mobile-nav-item ${activeTab === 'teams' ? 'active' : ''}`} onClick={() => handleTabChange('teams')}>
+          <Shield size={20} />
+          <span>Teams</span>
         </div>
         <div className={`mobile-nav-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => handleTabChange('profile')}>
           <User size={20} />

@@ -15,8 +15,6 @@ function AdminDashboard({ session, profile }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingEvent, setEditingEvent] = useState(null);
-  const [touchStart, setTouchStart] = useState(null);
-  const [touchEnd, setTouchEnd] = useState(null);
 
   const triggerHaptic = (pattern = 10) => {
     if (window.navigator && window.navigator.vibrate) {
@@ -31,32 +29,6 @@ function AdminDashboard({ session, profile }) {
     triggerHaptic(15);
     setViewingTeamsFor(null);
     setEditingHackathon(null);
-  };
-
-  const handleTouchStart = (e) => {
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchMove = (e) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > 70;
-    const isRightSwipe = distance < -70;
-
-    const currentIndex = tabs.indexOf(activeTab);
-
-    if (isLeftSwipe && currentIndex < tabs.length - 1) {
-      handleTabChange(tabs[currentIndex + 1]);
-    } else if (isRightSwipe && currentIndex > 0) {
-      handleTabChange(tabs[currentIndex - 1]);
-    }
-
-    setTouchStart(null);
-    setTouchEnd(null);
   };
 
   // Form states for creating event
@@ -247,9 +219,6 @@ function AdminDashboard({ session, profile }) {
   return (
     <div 
       style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
     >
       <div className="background-blobs">
         <div className="blob blob-1"></div>
