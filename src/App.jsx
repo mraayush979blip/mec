@@ -72,6 +72,8 @@ function App() {
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [initializing, setInitializing] = useState(true);
+  const [resendTimer, setResendTimer] = useState(0);
+  const [resendAttempts, setResendAttempts] = useState(0);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -137,6 +139,19 @@ function App() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // Dedicated Timer Effect
+  useEffect(() => {
+    let timer;
+    if (resendTimer > 0) {
+      timer = setInterval(() => {
+        setResendTimer(prev => prev - 1);
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [resendTimer]);
 
   const showNotification = (title, body) => {
     if (!("Notification" in window)) return;
@@ -224,11 +239,13 @@ function App() {
           if (error) throw error;
           
           setIsOtpSent(true);
-          setErrorMsg('Verification code sent! Check your email.');
-        } else if (!isVerified) {
+          setErrorMsg(''); 
+          setResendTimer(120); // Initial 2 min timer
+          setResendAttempts(1);
+        } else {
           // STEP 2: Verify the OTP
-          if (!otp || otp.length < 8) {
-            throw new Error('Please enter the full 8-digit verification code.');
+          if (!otp || otp.length < 6) {
+            throw new Error('Please enter the full 6-digit verification code.');
           }
           const { error: verifyError } = await supabase.auth.verifyOtp({ 
             email: email.trim(), 
@@ -238,12 +255,6 @@ function App() {
           if (verifyError) throw verifyError;
           
           setIsVerified(true);
-          setErrorMsg('Email verified! You can now access your dashboard.');
-        } else {
-          // STEP 3: Final step - now we allow the session to be set
-          const { data: { session: newSession } } = await supabase.auth.getSession();
-          setSession(newSession);
-          if (newSession) fetchProfile(newSession.user.id);
         }
       }
       else if (authFlow === 'verify_otp') {
@@ -277,17 +288,24 @@ function App() {
   };
 
   const handleResend = async () => {
+    if (resendTimer > 0) return;
+    
     setLoading(true);
-    try {
-      const type = authFlow === 'verify_otp' ? 'signup' : 'recovery';
-      const { error } = await supabase.auth.resend({ type, email });
-      if (error) throw error;
-      setErrorMsg('New OTP sent to your email!');
-    } catch (error) {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email
+    });
+    
+    if (!error) {
+      const nextAttempt = resendAttempts + 1;
+      setResendAttempts(nextAttempt);
+      // Exponential backoff: 120s * 2^(attempts-1)
+      setResendTimer(120 * Math.pow(2, resendAttempts)); 
+      setErrorMsg('A new code has been dispatched.');
+    } else {
       setErrorMsg(error.message);
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   if (loadingProfile && session) {
@@ -456,48 +474,80 @@ function App() {
           <Route path="/signup" element={
             session ? <Navigate to="/" replace /> : (
               <AuthLayout>
-                <h1 className="title fade-in-up delay-1" style={{ fontSize: '2.5rem' }}>{isVerified ? 'Verified.' : 'Create Account.'}</h1>
-                <p className="subtitle fade-in-up delay-2">{isVerified ? 'Your email is verified. Complete your account creation below.' : 'Join the platform to discover events and build your perfect team.'}</p>
-                <form className="fade-in-up delay-3" onSubmit={(e) => { setAuthFlow('signup'); handleAuth(e); }}>
-                  {errorMsg && <div className="error-alert">{errorMsg}</div>}
-                  {!isOtpSent && (
-                    <>
-                      <div className="input-group"><label className="input-label">Full Name</label><input type="text" className="glass-input" placeholder="John Doe" value={fullName} onChange={(e)=>setFullName(e.target.value)} required /></div>
+                {!isOtpSent ? (
+                  <>
+                    <h1 className="title fade-in-up delay-1" style={{ fontSize: '2.5rem' }}>Join the Hub.</h1>
+                    <p className="subtitle fade-in-up delay-2">Connect with the Mechatronics community and start building.</p>
+                    <form className="fade-in-up delay-3" onSubmit={(e) => { setAuthFlow('signup'); handleAuth(e); }}>
+                      {errorMsg && <div className="error-alert">{errorMsg}</div>}
+                      <div className="input-group">
+                        <label className="input-label">Full Name</label>
+                        <input type="text" className="glass-input" placeholder="John Doe" value={fullName} onChange={(e)=>setFullName(e.target.value)} required />
+                      </div>
                       <div className="input-group">
                         <label className="input-label">College Email</label>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <input type="email" className="glass-input" placeholder="student@acropolis.in" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ flex: 1 }} />
-                          <button type="button" className="btn btn-secondary" onClick={() => { setAuthFlow('signup'); handleAuth({ preventDefault: () => {} }); }} disabled={loading || !email}>{loading ? '...' : 'Get OTP'}</button>
-                        </div>
+                        <input type="email" className="glass-input" placeholder="student@acropolis.in" value={email} onChange={(e) => setEmail(e.target.value)} required />
                       </div>
-                    </>
-                  )}
-                  {isOtpSent && !isVerified && (
-                    <div className="fade-in-up auth-otp-box">
-                      <label className="input-label" style={{ textAlign: 'center', display: 'block' }}>Enter 8-Digit Verification Code</label>
-                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                        <input type="text" className="glass-input" placeholder="00000000" value={otp} onChange={(e)=>setOtp(e.target.value.replace(/\D/g, '').slice(0, 8))} required style={{ textAlign: 'center', letterSpacing: '0.2em', flex: 1 }} />
-                        <button type="button" className="btn btn-primary" onClick={() => { setAuthFlow('signup'); handleAuth({ preventDefault: () => {} }); }} disabled={loading || otp.length < 8}>{loading ? '...' : 'Verify'}</button>
-                      </div>
-                      <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.5rem', textAlign: 'center' }}>Check your email. <span onClick={handleResend} style={{ color: 'var(--accent)', cursor: 'pointer' }}>Resend?</span></p>
-                    </div>
-                  )}
-                  {(isVerified || (!isOtpSent)) && (
-                    <>
-                      <div className="input-group"><label className="input-label">WhatsApp Number</label><input type="tel" className="glass-input" placeholder="+91 00000 00000" value={whatsapp} onChange={(e)=>setWhatsapp(e.target.value)} required disabled={!isVerified && isOtpSent} /></div>
                       <div className="input-group">
-                        <label className="input-label">Password</label>
+                        <label className="input-label">WhatsApp Number</label>
+                        <input type="tel" className="glass-input" placeholder="+91 00000 00000" value={whatsapp} onChange={(e)=>setWhatsapp(e.target.value)} required />
+                      </div>
+                      <div className="input-group">
+                        <label className="input-label">Create Password</label>
                         <div style={{ position: 'relative' }}>
-                          <input type={showPassword ? "text" : "password"} className="glass-input" placeholder="••••••••" value={password} onChange={(e)=>setPassword(e.target.value)} required disabled={!isVerified && isOtpSent} />
+                          <input type={showPassword ? "text" : "password"} className="glass-input" placeholder="••••••••" value={password} onChange={(e)=>setPassword(e.target.value)} required />
                           <button type="button" className="password-toggle" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
                         </div>
                       </div>
-                    </>
-                  )}
-                  <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem', background: isVerified ? '#34C759' : '' }} disabled={(!isVerified && isOtpSent) || loading}>
-                    {loading ? 'Processing...' : (isVerified ? 'Create Account' : 'Verify Email Above')} {!loading && <ArrowRight size={18} />}
-                  </button>
-                </form>
+                      <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={loading}>
+                        {loading ? 'Creating Account...' : 'Create Account'} <ArrowRight size={18} />
+                      </button>
+                    </form>
+                  </>
+                ) : (
+                  <div className="fade-in-up">
+                    <div style={{ background: 'var(--accent-light)', color: 'var(--accent)', width: '60px', height: '60px', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto' }}>
+                      <Activity size={32} />
+                    </div>
+                    <h1 className="title" style={{ fontSize: '2rem' }}>Verify Email</h1>
+                    <p className="subtitle">We've sent a 6-digit code to <strong>{email}</strong>. Please enter it below.</p>
+                    
+                    <form onSubmit={(e) => { setAuthFlow('signup'); handleAuth(e); }}>
+                      {errorMsg && <div className="error-alert" style={{ marginBottom: '1.5rem' }}>{errorMsg}</div>}
+                      <div className="input-group">
+                        <input 
+                          type="text" 
+                          className="glass-input" 
+                          placeholder="000000" 
+                          value={otp} 
+                          onChange={(e)=>setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} 
+                          required 
+                          style={{ textAlign: 'center', letterSpacing: '0.4em', fontSize: '1.5rem', fontWeight: 800, padding: '1.2rem' }} 
+                        />
+                      </div>
+                      <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={loading || otp.length < 6}>
+                        {loading ? 'Verifying...' : 'Complete Registration'} <ArrowRight size={18} />
+                      </button>
+                    </form>
+                    
+                    <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        Didn't receive code? {resendTimer > 0 ? (
+                          <span style={{ color: 'var(--accent)', fontWeight: 700 }}>
+                            Wait {Math.floor(resendTimer / 60)}:{(resendTimer % 60).toString().padStart(2, '0')}s
+                          </span>
+                        ) : (
+                          <span onClick={handleResend} style={{ color: 'var(--accent)', cursor: 'pointer', fontWeight: 600 }}>
+                            Resend Email
+                          </span>
+                        )}
+                      </p>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                         Entered wrong email? <span onClick={() => { setIsOtpSent(false); setResendTimer(0); setResendAttempts(0); }} style={{ color: 'var(--text-secondary)', cursor: 'pointer', textDecoration: 'underline' }}>Go back</span>
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <p style={{ marginTop: '2rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Already have an account? <Link to="/login" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Log in here</Link></p>
               </AuthLayout>
             )
