@@ -720,23 +720,27 @@ function StudentDashboard({ session, profile }) {
       {/* MOBILE BOTTOM NAV */}
       <div className="mobile-bottom-nav">
         <div className={`mobile-nav-item ${activeTab === 'events' ? 'active' : ''}`} onClick={() => handleTabChange('events')}>
-          <Calendar size={22} />
+          <Calendar size={20} />
           <span>Events</span>
         </div>
         <div className={`mobile-nav-item ${activeTab === 'discovery' ? 'active' : ''}`} onClick={() => handleTabChange('discovery')}>
-          <Globe size={22} />
-          <span>Discovery</span>
+          <Globe size={20} />
+          <span>Discover</span>
         </div>
         <div className={`mobile-nav-item ${activeTab === 'find_member' ? 'active' : ''}`} onClick={() => handleTabChange('find_member')}>
-          <PlusCircle size={22} />
+          <PlusCircle size={20} />
           <span>Recruit</span>
         </div>
+        <div className={`mobile-nav-item ${activeTab === 'teams' ? 'active' : ''}`} onClick={() => handleTabChange('teams')}>
+          <Shield size={20} />
+          <span>Teams</span>
+        </div>
         <div className={`mobile-nav-item ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => handleTabChange('activity')}>
-          <Activity size={22} />
+          <Activity size={20} />
           <span>Activity</span>
         </div>
         <div className={`mobile-nav-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => handleTabChange('profile')}>
-          <User size={22} />
+          <User size={20} />
           <span>Profile</span>
         </div>
       </div>
@@ -981,17 +985,17 @@ function StudentDashboard({ session, profile }) {
         {/* FIND MEMBER TAB */}
         {activeTab === 'find_member' && (
           <div className="fade-in-up">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem' }}>
-              <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ flex: 1, minWidth: '200px' }}>
                 <h1 className="dashboard-title">My Recruitment Posts</h1>
                 <p className="subtitle">Manage your listings or create a new one to find talent.</p>
               </div>
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <button className="btn btn-secondary" onClick={fetchListings}>
-                  <Activity size={18} /> Refresh
+              <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+                <button className="btn btn-secondary" style={{ padding: '0.6rem 1rem', fontSize: '0.85rem' }} onClick={fetchListings}>
+                  <Activity size={16} /> Refresh
                 </button>
-                <button className="btn btn-primary" onClick={() => setTeamAction(teamAction === 'create_listing' ? null : 'create_listing')}>
-                  {teamAction === 'create_listing' ? <><XCircle size={18} /> Close Form</> : <><PlusCircle size={18} /> New Listing</>}
+                <button className="btn btn-primary" style={{ padding: '0.6rem 1rem', fontSize: '0.85rem' }} onClick={() => setTeamAction(teamAction === 'create_listing' ? null : 'create_listing')}>
+                  {teamAction === 'create_listing' ? <><XCircle size={16} /> Close</> : <><PlusCircle size={16} /> New Listing</>}
                 </button>
               </div>
             </div>
@@ -1362,17 +1366,17 @@ function StudentDashboard({ session, profile }) {
         {/* ACTIVITY TAB */}
         {activeTab === 'activity' && (
           <div className="fade-in-up">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3rem' }}>
-              <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ flex: 1, minWidth: '200px' }}>
                 <h1 className="dashboard-title">Platform Activity</h1>
                 <p className="subtitle">Manage your connections and collaboration requests.</p>
               </div>
-              <button className="btn btn-secondary" onClick={fetchActivity}>
+              <button className="btn btn-secondary" style={{ padding: '0.6rem 1rem', fontSize: '0.85rem' }} onClick={fetchActivity}>
                  Sync Data <Activity size={16} />
               </button>
             </div>
             
-            <div className="tab-bar">
+            <div className="tab-bar" style={{ overflowX: 'auto', whiteSpace: 'nowrap', display: 'flex' }}>
               <button className={`tab-btn ${activityTab === 'requested' ? 'active' : ''}`} onClick={() => setActivityTab('requested')}>
                 Sent ({myRequests.length})
               </button>
@@ -1527,17 +1531,17 @@ function StudentDashboard({ session, profile }) {
                    <button className="btn btn-primary" onClick={() => handleTabChange('events')}>Explore Events</button>
                 </div>
               ) : myJoinedTeams.map(team => (
-                <div key={team.id} className="glass-panel fade-in-up" style={{ padding: '2.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem' }}>
+                <div key={team.id} className="glass-panel fade-in-up" style={{ padding: '2rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div style={{ flex: 1, minWidth: '200px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
                         <span className={`badge ${team.isLead ? 'badge-purple' : 'badge-blue'}`}>{team.isLead ? 'Team Lead' : 'Member'}</span>
                         <span className="badge badge-green">{team.events?.title || 'External Project'}</span>
                       </div>
-                      <h2 style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.03em' }}>{team.team_name}</h2>
+                      <h2 style={{ fontSize: 'clamp(1.4rem, 5vw, 2rem)', fontWeight: 800, letterSpacing: '-0.03em' }}>{team.team_name}</h2>
                     </div>
                     {!team.isLead && (
-                      <button className="btn btn-secondary" style={{ color: 'var(--status-red)', borderColor: 'rgba(255,59,48,0.2)' }} onClick={() => handleLeaveTeam(team.id)}>
+                      <button className="btn btn-secondary" style={{ color: 'var(--status-red)', borderColor: 'rgba(255,59,48,0.2)', padding: '0.6rem 1rem', fontSize: '0.85rem' }} onClick={() => handleLeaveTeam(team.id)}>
                         Leave Team
                       </button>
                     )}

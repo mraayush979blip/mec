@@ -702,6 +702,15 @@ body {
   main {
     padding-bottom: 100px !important;
   }
+
+  .tab-bar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tab-bar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .mobile-bottom-nav {
@@ -714,13 +723,14 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.3rem;
+  gap: 0.2rem;
   color: var(--text-secondary);
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.3s ease;
-  padding: 0.5rem 0;
+  padding: 0.4rem 0;
+  min-width: 0;
 }
 
 .mobile-nav-item.active {
