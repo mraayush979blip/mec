@@ -874,9 +874,14 @@ function StudentDashboard({ session, profile }) {
                 <h1 className="dashboard-title">My Recruitment Posts</h1>
                 <p className="subtitle">Manage your listings or create a new one to find talent.</p>
               </div>
-              <button className="btn btn-primary" onClick={() => setTeamAction(teamAction === 'create_listing' ? null : 'create_listing')}>
-                {teamAction === 'create_listing' ? <><XCircle size={18} /> Close Form</> : <><PlusCircle size={18} /> New Listing</>}
-              </button>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button className="btn btn-secondary" onClick={fetchListings}>
+                  <Activity size={18} /> Refresh
+                </button>
+                <button className="btn btn-primary" onClick={() => setTeamAction(teamAction === 'create_listing' ? null : 'create_listing')}>
+                  {teamAction === 'create_listing' ? <><XCircle size={18} /> Close Form</> : <><PlusCircle size={18} /> New Listing</>}
+                </button>
+              </div>
             </div>
 
             {teamAction === 'create_listing' && (
@@ -992,7 +997,7 @@ function StudentDashboard({ session, profile }) {
         {/* TEAM SELECTION VIEW (Within Events) */}
         {activeTab === 'events' && selectedEvent && !teamAction && (
           <div className="fade-in-up">
-            <button className="btn btn-secondary" style={{ marginBottom: '2rem' }} onClick={() => setSelectedEvent(null)}>
+            <button className="btn btn-secondary" style={{ marginBottom: '2rem' }} onClick={() => { setSelectedEvent(null); setTeamAction(null); }}>
               ← All Events
             </button>
             <h1 className="dashboard-title" style={{ fontSize: '2.5rem' }}>{selectedEvent.title}</h1>
@@ -1015,6 +1020,107 @@ function StudentDashboard({ session, profile }) {
                 <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: '1.6' }}>Browse active teams created by other students and request to join their mission.</p>
                 <button className="btn btn-secondary" style={{ marginTop: '2rem', width: '100%' }}>Browse Teams</button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* CREATE / MANAGE TEAM FORM */}
+        {activeTab === 'events' && selectedEvent && teamAction === 'create' && (
+          <div className="fade-in-up">
+            <button className="btn btn-secondary" style={{ marginBottom: '2rem' }} onClick={() => setTeamAction(null)}>
+              ← Change Role
+            </button>
+            <h1 className="dashboard-title">{myTeamForEvent ? 'Manage Your Team' : 'Establish Your Team'}</h1>
+            <p className="subtitle">Set your mission and find the best peers to win.</p>
+
+            <div className="glass-panel" style={{ padding: '2.5rem' }}>
+              <form onSubmit={handleCreateTeam}>
+                <div className="input-group">
+                  <label className="input-label">Team Name</label>
+                  <input type="text" className="glass-input" value={teamName} onChange={(e)=>setTeamName(e.target.value)} placeholder="e.g. Cyber Knights" required />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">What roles do you need?</label>
+                  <textarea className="glass-input" rows="3" value={teamRequirements} onChange={(e)=>setTeamRequirements(e.target.value)} placeholder="e.g. Looking for 1 Backend Dev and 1 Designer..." required></textarea>
+                </div>
+                <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '1.2rem' }}>
+                  {myTeamForEvent ? 'Update Team Details' : 'Initialize Team & Start Recruiting'}
+                </button>
+              </form>
+
+              {myTeamForEvent && (
+                <div style={{ marginTop: '4rem' }}>
+                  <h3 style={{ marginBottom: '1.5rem', fontSize: '1.4rem' }}>Invite Talent</h3>
+                  <div className="glass-panel" style={{ padding: '1rem', display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '2rem' }}>
+                    <Search size={20} color="var(--text-secondary)" />
+                    <input type="text" className="glass-input" style={{ border: 'none', background: 'transparent' }} placeholder="Search students by skill or name..." value={studentSearch} onChange={(e)=>setStudentSearch(e.target.value)} />
+                  </div>
+                  
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    {availableStudents.filter(s => s.full_name.toLowerCase().includes(studentSearch.toLowerCase()) || s.skills?.some(sk => sk.toLowerCase().includes(studentSearch.toLowerCase()))).map(student => (
+                      <div key={student.id} className="glass-panel" style={{ padding: '1.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                          <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
+                            {student.full_name.charAt(0)}
+                          </div>
+                          <div>
+                            <p style={{ fontWeight: 800 }}>{student.full_name}</p>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{student.dev_role} • {student.skills?.slice(0, 3).join(', ')}</p>
+                          </div>
+                        </div>
+                        <button 
+                          className="btn btn-secondary" 
+                          style={{ padding: '0.4rem 1rem', fontSize: '0.8rem' }}
+                          onClick={() => handleInviteStudent(student.id)}
+                          disabled={invitingId === student.id || sentInvitations.includes(student.id)}
+                        >
+                          {invitingId === student.id ? 'Sending...' : sentInvitations.includes(student.id) ? 'Invited' : 'Invite'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* BROWSE / JOIN TEAMS LIST */}
+        {activeTab === 'events' && selectedEvent && teamAction === 'join' && (
+          <div className="fade-in-up">
+             <button className="btn btn-secondary" style={{ marginBottom: '2rem' }} onClick={() => setTeamAction(null)}>
+              ← Change Role
+            </button>
+            <h1 className="dashboard-title">Active Missions</h1>
+            <p className="subtitle">Browse teams looking for members for {selectedEvent.title}.</p>
+
+            <div style={{ display: 'grid', gap: '1.5rem' }}>
+              {existingTeams.length === 0 ? (
+                <div className="glass-panel" style={{ padding: '4rem 2rem', textAlign: 'center' }}>
+                  <Users size={48} color="var(--text-secondary)" style={{ marginBottom: '1rem', opacity: 0.5 }} />
+                  <p style={{ color: 'var(--text-secondary)' }}>No teams have been formed yet. Why not lead one?</p>
+                </div>
+              ) : existingTeams.map(team => (
+                <div key={team.id} className="glass-panel" style={{ padding: '2rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1.5rem', fontWeight: 800 }}>{team.icon_url} {team.team_name}</h3>
+                      <p style={{ color: 'var(--accent)', fontWeight: 700 }}>Lead: {team.profiles?.full_name}</p>
+                    </div>
+                    <button 
+                      className="btn btn-primary" 
+                      onClick={() => handleRequestJoin(team.id)}
+                      disabled={team.join_requests?.some(r => r.applicant_id === profile.id)}
+                    >
+                      {team.join_requests?.some(r => r.applicant_id === profile.id) ? 'Request Sent' : 'Request to Join'}
+                    </button>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.02)', padding: '1.2rem', borderRadius: '18px' }}>
+                    <p style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Team Requirements</p>
+                    <p style={{ fontSize: '1rem', lineHeight: '1.6' }}>{team.requirements}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -1073,9 +1179,9 @@ function StudentDashboard({ session, profile }) {
 
                 {activityTab === 'invitations' && (
                   <div style={{ display: 'grid', gap: '1rem' }}>
-                    {(myInvitations || []).length === 0 ? (
-                        <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No invitations received.</div>
-                    ) : myInvitations.map(inv => (
+                    {(myInvitations || []).filter(inv => inv.status === 'pending').length === 0 ? (
+                        <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No pending invitations.</div>
+                    ) : myInvitations.filter(inv => inv.status === 'pending').map(inv => (
                       <div key={inv.id} className="glass-panel fade-in-up" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                           <p style={{ fontWeight: 800, fontSize: '1.1rem' }}>{inv.teams?.team_name}</p>
