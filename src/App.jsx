@@ -7,6 +7,34 @@ import ErrorBoundary from './components/ErrorBoundary';
 const StudentDashboard = lazy(() => import('./components/StudentDashboard'));
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
 
+const AuthLayout = ({ children }) => (
+  <>
+    <div className="background-blobs">
+      <div className="blob blob-1"></div>
+      <div className="blob blob-2"></div>
+      <div className="blob blob-3"></div>
+    </div>
+    <header className="glass-header">
+      <div className="container">
+        <nav>
+          <div className="nav-brand">Mechatronian</div>
+          <Link to="/" className="btn btn-secondary" style={{ padding: '0.4rem 1rem', fontSize: '0.85rem', textDecoration: 'none' }}>Home</Link>
+        </nav>
+      </div>
+    </header>
+    <main className="container h-screen-center" style={{ minHeight: 'calc(100vh - 70px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="glass-panel fade-in-up auth-box" style={{ padding: '3rem', maxWidth: '480px', width: '100%', textAlign: 'center', margin: 'auto' }}>
+        <div className="fade-in-up delay-1" style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+          <div style={{ background: 'var(--accent)', color: 'white', padding: '1rem', borderRadius: '20px', boxShadow: '0 8px 24px rgba(0,113,227,0.3)' }}>
+            <Sparkles size={32} />
+          </div>
+        </div>
+        {children}
+      </div>
+    </main>
+  </>
+);
+
 function App() {
   const [authFlow, setAuthFlow] = useState('landing'); // 'landing', 'login', 'signup', 'verify_otp', 'forgot_password', 'verify_forgot', 'reset_password'
   const [email, setEmail] = useState('');
@@ -231,34 +259,6 @@ function App() {
     );
   }
 
-  const AuthLayout = ({ children }) => (
-    <>
-      <div className="background-blobs">
-        <div className="blob blob-1"></div>
-        <div className="blob blob-2"></div>
-        <div className="blob blob-3"></div>
-      </div>
-      <header className="glass-header">
-        <div className="container">
-          <nav>
-            <div className="nav-brand">Mechatronian</div>
-            <Link to="/" className="btn btn-secondary" style={{ padding: '0.4rem 1rem', fontSize: '0.85rem', textDecoration: 'none' }}>Home</Link>
-          </nav>
-        </div>
-      </header>
-      <main className="container h-screen-center" style={{ minHeight: 'calc(100vh - 70px)' }}>
-        <div className="glass-panel fade-in-up" style={{ padding: '3rem', maxWidth: '480px', width: '100%', textAlign: 'center' }}>
-          <div className="fade-in-up delay-1" style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-            <div style={{ background: 'var(--accent)', color: 'white', padding: '1rem', borderRadius: '20px', boxShadow: '0 8px 24px rgba(0,113,227,0.3)' }}>
-              <Sparkles size={32} />
-            </div>
-          </div>
-          {children}
-        </div>
-      </main>
-    </>
-  );
-
   return (
     <ErrorBoundary>
       <Suspense fallback={
@@ -417,3 +417,5 @@ function App() {
 }
 
 export default App;
+
+
