@@ -33,6 +33,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   // Join Team state
   const [existingTeams, setExistingTeams] = useState([]);
   const [expandedTeamId, setExpandedTeamId] = useState(null);
+  const [expandedListingId, setExpandedListingId] = useState(null);
   
   // Recruitment state
   const [myTeamForEvent, setMyTeamForEvent] = useState(null);
@@ -183,7 +184,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
     setLoadingListings(true);
     const { data, error } = await supabase
       .from('team_listings')
-      .select('*, profiles!team_listings_creator_id_fkey(full_name, dev_role, skills), join_requests(applicant_id, status)')
+      .select('*, profiles!team_listings_creator_id_fkey(full_name, dev_role, skills), join_requests(applicant_id, status, profiles:profiles!join_requests_applicant_id_fkey(full_name))')
       .order('created_at', { ascending: false });
     
     if (error) {
@@ -562,6 +563,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
       .select(`
         *,
         teams:teams!team_id(team_name),
+        team_listings:team_listings!listing_id(team_name),
         profiles:profiles!join_requests_applicant_id_fkey(full_name)
       `)
       .order('created_at', { ascending: false })
@@ -990,7 +992,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                           boxShadow: `0 0 10px ${event.source_type === 'admin' ? 'rgba(0,122,255,0.5)' : 'rgba(175,82,222,0.5)'}`
                         }}></div>
                         <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.02em', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-                          {event.source_type === 'admin' ? 'Official Update' : `Recruitment • ${event.profiles?.full_name}`}
+                          {event.source_type === 'admin' ? 'Official Update' : <>Recruitment • <span style={{ color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleViewProfile(event.creator_id)}>{event.profiles?.full_name}</span></>}
                         </span>
                       </div>
                       {event.expires_at && (
@@ -1310,6 +1312,41 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                     </div>
 
                     <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', lineHeight: '1.7' }}>{listing.description}</p>
+
+                    {/* Know More Toggle */}
+                    <button 
+                      className="btn btn-secondary" 
+                      style={{ width: '100%', padding: '0.7rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', borderRadius: '15px' }}
+                      onClick={() => setExpandedListingId(expandedListingId === listing.id ? null : listing.id)}
+                    >
+                      {expandedListingId === listing.id ? '▲ Hide Team Interest' : '▼ View Team Interest'}
+                    </button>
+
+                    {/* Expanded Team Interest Panel */}
+                    {expandedListingId === listing.id && (
+                      <div className="fade-in-up" style={{ background: 'rgba(0, 113, 227, 0.05)', padding: '1.5rem', borderRadius: '24px', border: '1px solid rgba(0, 113, 227, 0.1)' }}>
+                        <p style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: '1rem', letterSpacing: '0.05em' }}>Applicants & Interest ({listing.join_requests?.length || 0})</p>
+                        {(!listing.join_requests || listing.join_requests.length === 0) ? (
+                          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>No one has requested to join yet. Be the first!</p>
+                        ) : (
+                          <div style={{ display: 'grid', gap: '0.8rem' }}>
+                            {listing.join_requests.map((req, idx) => (
+                              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '0.8rem 1.2rem', borderRadius: '16px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                  <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 800 }}>
+                                    {req.profiles?.full_name?.charAt(0) || '?'}
+                                  </div>
+                                  <span style={{ fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', textDecoration: 'underline', color: 'var(--accent)' }} onClick={() => handleViewProfile(req.applicant_id)}>{req.profiles?.full_name}</span>
+                                </div>
+                                <span className={`badge ${req.status === 'approved' ? 'badge-green' : req.status === 'rejected' ? 'badge-red' : 'badge-blue'}`} style={{ fontSize: '0.65rem' }}>
+                                  {req.status}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     
                     <div style={{ marginTop: '0.5rem', padding: '1.5rem', background: 'rgba(0,0,0,0.02)', borderRadius: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -1641,7 +1678,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                       <div key={inv.id} className="glass-panel fade-in-up" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                         <div style={{ flex: 1, minWidth: '200px' }}>
                           <p style={{ fontWeight: 800, fontSize: '1.1rem' }}>{inv.teams?.team_name}</p>
-                          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Invited by {inv.teams?.profiles?.full_name}</p>
+                          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Invited by <span style={{ color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleViewProfile(inv.teams?.creator_id)}>{inv.teams?.profiles?.full_name}</span></p>
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                           <button className="btn btn-primary" style={{ padding: '0.5rem 1rem' }} onClick={() => handleRequestResponse(inv.id, 'approved', profile.id, inv.team_id)}>Accept</button>
@@ -1720,7 +1757,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                               <Users size={16} />
                            </div>
                            <div style={{ flex: 1 }}>
-                              <p style={{ fontSize: '0.9rem', fontWeight: 700 }}><span style={{ color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleViewProfile(req.applicant_id)}>{req.profiles?.full_name}</span> requested to join <span style={{ color: 'var(--text-primary)' }}>{req.teams?.team_name || 'a team'}</span></p>
+                              <p style={{ fontSize: '0.9rem', fontWeight: 700 }}><span style={{ color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleViewProfile(req.applicant_id)}>{req.profiles?.full_name}</span> requested to join <span style={{ color: 'var(--text-primary)' }}>{req.teams?.team_name || req.team_listings?.team_name || 'a team'}</span></p>
                               <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{new Date(req.created_at).toLocaleString()}</p>
                            </div>
                         </div>
@@ -1837,7 +1874,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                                 {member.profiles?.full_name?.charAt(0)}
                               </div>
                               <div>
-                                <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>{member.profiles?.full_name}</h4>
+                                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', color: 'var(--accent)' }} onClick={() => handleViewProfile(member.user_id)}>{member.profiles?.full_name}</h4>
                                 <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{member.profiles?.dev_role || 'Specialist'}</p>
                               </div>
                             </div>
