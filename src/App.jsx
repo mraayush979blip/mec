@@ -99,6 +99,7 @@ function App() {
           localStorage.removeItem('student_active_tab');
           localStorage.removeItem('admin_active_tab');
           localStorage.removeItem('fresh_login');
+          if (window.OneSignal) window.OneSignal.logout();
         }
       }
     });
@@ -180,6 +181,21 @@ function App() {
         return;
       }
       setProfile(data);
+
+      // OneSignal Identity & Tagging
+      try {
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        window.OneSignalDeferred.push(function(OneSignal) {
+          OneSignal.login(data.id);
+          OneSignal.User.addTags({
+            full_name: data.full_name,
+            role: data.role,
+            branch: data.branch || 'Unknown'
+          });
+        });
+      } catch (e) {
+        console.error("OneSignal Tagging Error:", e);
+      }
     }
     setLoadingProfile(false);
   };

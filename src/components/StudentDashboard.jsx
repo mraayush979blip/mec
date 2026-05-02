@@ -955,7 +955,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
             ) : (
               <div style={{ display: 'grid', gap: '1.5rem' }}>
                 {events.map((event) => {
-                  const myTeamForEvent = teams.find(t => t.event_id === event.id && t.creator_id === profile.id);
+                  const myTeamForEvent = (myJoinedTeams || []).find(t => t.event_id === event.id && t.creator_id === profile.id);
                   return (
                   <div key={event.id} className="glass-panel fade-in-up" style={{ 
                     padding: '1.8rem', 
