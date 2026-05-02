@@ -4,10 +4,15 @@ import {
   Users, Shield, CheckCircle, XCircle, Star, Search, 
   MapPin, Link as LinkIcon, Briefcase, Globe, GitBranch, FileText
 } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 function StudentDashboard({ session, profile }) {
-  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('student_active_tab') || 'events'); // events, discovery, find_member, activity, teams, profile
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Derived active tab from URL path
+  const activeTab = location.pathname.split('/')[1] || 'events';
 
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +58,7 @@ function StudentDashboard({ session, profile }) {
   const [hackathonName, setHackathonName] = useState('');
   const [registrationLink, setRegistrationLink] = useState('');
   const [mode, setMode] = useState('Online');
-  const [location, setLocation] = useState('');
+  const [formLocation, setFormLocation] = useState('');
   const [rolesNeeded, setRolesNeeded] = useState('');
   const [requiredSkills, setRequiredSkills] = useState('');
   const [minExperience, setMinExperience] = useState('');
@@ -86,9 +91,8 @@ function StudentDashboard({ session, profile }) {
 
 
   const handleTabChange = (tab) => {
-    if (tab === activeTab) return;
+    navigate(`/${tab === 'events' ? '' : tab}`);
     triggerHaptic(15);
-    setActiveTab(tab);
   };
 
   const handleTouchStart = (e) => {
@@ -118,7 +122,6 @@ function StudentDashboard({ session, profile }) {
   };
 
   useEffect(() => {
-    localStorage.setItem('student_active_tab', activeTab);
     if (activeTab === 'events') {
       fetchEvents();
       setSelectedEvent(null);
@@ -127,6 +130,8 @@ function StudentDashboard({ session, profile }) {
       fetchDiscovery();
     } else if (activeTab === 'find_member') {
       fetchListings();
+    } else if (activeTab === 'teams') {
+      fetchMyTeams();
     } else if (activeTab === 'activity') {
       fetchActivity();
     } else if (activeTab === 'teams') {
@@ -147,11 +152,17 @@ function StudentDashboard({ session, profile }) {
 
   const fetchListings = async () => {
     setLoadingListings(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('team_listings')
-      .select('*, profiles:profiles!creator_id(full_name, dev_role, skills)')
+      .select('*, profiles(full_name, dev_role, skills)')
       .order('created_at', { ascending: false });
-    if (data) setListings(data);
+    
+    if (error) {
+      console.error("Error fetching listings:", error);
+    } else {
+      console.log("Fetched listings:", data);
+      setListings(data || []);
+    }
     setLoadingListings(false);
   };
 
@@ -180,7 +191,7 @@ function StudentDashboard({ session, profile }) {
         hackathon_name: hackathonName,
         registration_link: registrationLink,
         mode,
-        location,
+        location: formLocation,
         roles_needed: rolesNeeded.split(',').map(r => r.trim()).filter(r => r),
         required_skills: requiredSkills.split(',').map(s => s.trim()).filter(s => s),
         min_experience: minExperience,
@@ -192,7 +203,7 @@ function StudentDashboard({ session, profile }) {
         setListingTeamName('');
         setHackathonName('');
         setRegistrationLink('');
-        setLocation('');
+        setFormLocation('');
         setRolesNeeded('');
         setRequiredSkills('');
         setMinExperience('');
@@ -235,10 +246,12 @@ function StudentDashboard({ session, profile }) {
       .order('created_at', { ascending: false });
     
     // Fetch Student Listings
-    const { data: studentListings } = await supabase
+    const { data: studentListings, error: listError } = await supabase
       .from('team_listings')
-      .select('*, profiles:profiles!creator_id(full_name, dev_role, skills)')
+      .select('*, profiles(full_name, dev_role, skills)')
       .order('created_at', { ascending: false });
+    
+    if (listError) console.error("Error fetching student listings for feed:", listError);
 
     // Combine and Sort
     const combined = [
@@ -519,15 +532,21 @@ function StudentDashboard({ session, profile }) {
       .from('teams')
       .select(`
         *,
-        profiles!teams_creator_id_fkey(full_name),
+        profiles(full_name),
         join_requests(
           id,
           status,
-          profiles!join_requests_applicant_id_fkey(full_name)
+          profiles(full_name)
         )
       `)
       .eq('event_id', selectedEvent.id);
-    if (data) setExistingTeams(data);
+    
+    if (error) {
+      console.error("Error loading existing teams:", error);
+      alert("Failed to load teams. Check console for details.");
+    } else {
+      setExistingTeams(data || []);
+    }
   };
 
   const handleRequestJoin = async (teamId) => {
@@ -540,6 +559,23 @@ function StudentDashboard({ session, profile }) {
     } else {
       alert("Request sent successfully!");
     }
+  };
+
+  const fetchMyTeams = async () => {
+    setLoading(true);
+    try {
+      const { data: created } = await supabase.from('teams').select('*, events(*)').eq('creator_id', profile.id);
+      const { data: joined } = await supabase.from('team_members').select('*, teams(*, events(*))').eq('user_id', profile.id);
+      const combined = [...(created || []).map(t => ({ ...t, isLead: true })), ...(joined || []).map(j => ({ ...j.teams, isLead: false }))];
+      const unique = Array.from(new Map((combined || []).filter(t=>t).map(t => [t.id, t])).values());
+      setMyJoinedTeams(unique);
+    } catch (err) { console.error(err); } finally { setLoading(false); }
+  };
+
+  const handleLeaveTeam = async (teamId) => {
+    if (!window.confirm("Are you sure you want to leave this team?")) return;
+    const { error } = await supabase.from('team_members').delete().eq('team_id', teamId).eq('user_id', profile.id);
+    if (!error) fetchMyTeams();
   };
 
   const handleRequestResponse = async (requestId, status, applicantId, teamId) => {
@@ -906,6 +942,12 @@ function StudentDashboard({ session, profile }) {
                         <option value="Offline">📍 In-Person / Offline</option>
                       </select>
                     </div>
+                    {mode === 'Offline' && (
+                      <div className="input-group">
+                        <label className="input-label">Location / City</label>
+                        <input type="text" className="glass-input" placeholder="e.g. Indore, MP" value={formLocation} onChange={(e)=>setFormLocation(e.target.value)} required={mode === 'Offline'} />
+                      </div>
+                    )}
                     <div className="input-group">
                       <label className="input-label">Roles Needed</label>
                       <input type="text" className="glass-input" placeholder="Frontend, UI Designer, etc." value={rolesNeeded} onChange={(e)=>setRolesNeeded(e.target.value)} required />
@@ -1261,6 +1303,62 @@ function StudentDashboard({ session, profile }) {
                     ))}
                   </div>
                 )}
+            </div>
+          </div>
+        )}
+        {/* TEAMS TAB */}
+        {activeTab === 'teams' && (
+          <div className="fade-in-up">
+            <h1 className="dashboard-title">My Collaborative Missions</h1>
+            <p className="subtitle">View and manage teams you've built or joined.</p>
+
+            <div style={{ display: 'grid', gap: '2rem', marginTop: '2rem' }}>
+              {myJoinedTeams.length === 0 ? (
+                <div className="glass-panel" style={{ padding: '5rem 2rem', textAlign: 'center' }}>
+                   <Users size={64} color="var(--text-secondary)" style={{ marginBottom: '1.5rem', opacity: 0.3 }} />
+                   <h3 style={{ fontSize: '1.5rem', fontWeight: 800 }}>No Active Teams</h3>
+                   <p style={{ color: 'var(--text-secondary)', maxWidth: '400px', margin: '0.5rem auto 2rem' }}>You haven't joined any teams yet. Explore events or recruitment posts to find your mission.</p>
+                   <button className="btn btn-primary" onClick={() => handleTabChange('events')}>Explore Events</button>
+                </div>
+              ) : myJoinedTeams.map(team => (
+                <div key={team.id} className="glass-panel fade-in-up" style={{ padding: '2.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem' }}>
+                        <span className={`badge ${team.isLead ? 'badge-purple' : 'badge-blue'}`}>{team.isLead ? 'Team Lead' : 'Member'}</span>
+                        <span className="badge badge-green">{team.events?.title || 'External Project'}</span>
+                      </div>
+                      <h2 style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.03em' }}>{team.team_name}</h2>
+                    </div>
+                    {!team.isLead && (
+                      <button className="btn btn-secondary" style={{ color: 'var(--status-red)', borderColor: 'rgba(255,59,48,0.2)' }} onClick={() => handleLeaveTeam(team.id)}>
+                        Leave Team
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(0,0,0,0.02)', borderRadius: '24px' }}>
+                    <p style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '0.8rem' }}>Mission Statement / Requirements</p>
+                    <p style={{ fontSize: '1.1rem', lineHeight: '1.6', color: 'var(--text-primary)' }}>{team.requirements}</p>
+                  </div>
+
+                  <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div style={{ display: 'flex', marginLeft: '0.5rem' }}>
+                           {[1,2,3].map(i => (
+                             <div key={i} style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'var(--accent)', border: '2px solid white', marginLeft: '-10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.7rem', fontWeight: 800 }}>
+                                {i}
+                             </div>
+                           ))}
+                        </div>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Active Collaboration</span>
+                     </div>
+                     <button className="btn btn-secondary" onClick={() => handleTabChange('activity')}>
+                       View Approvals <ArrowRight size={16} />
+                     </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { LogOut, Calendar, PlusCircle, Activity, Users, Settings, Globe } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 function AdminDashboard({ session, profile }) {
-  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('admin_active_tab') || 'overview'); // overview, events, create
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Derived active tab from URL path (ignoring /admin prefix if present)
+  const pathParts = location.pathname.split('/').filter(Boolean);
+  const activeTab = pathParts[pathParts[0] === 'admin' ? 1 : 0] || 'overview';
+
   const [stats, setStats] = useState({ students: 0, teams: 0, requests: 0, events: 0 });
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,9 +27,8 @@ function AdminDashboard({ session, profile }) {
   const tabs = ['overview', 'events', 'discovery', 'create'];
 
   const handleTabChange = (tab) => {
-    if (tab === activeTab) return;
+    navigate(`/admin/${tab}`);
     triggerHaptic(15);
-    setActiveTab(tab);
     setViewingTeamsFor(null);
     setEditingHackathon(null);
   };

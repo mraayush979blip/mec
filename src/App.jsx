@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Users, Calendar, ArrowRight, Loader, Eye, EyeOff, Activity } from 'lucide-react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import StudentDashboard from './components/StudentDashboard';
 import AdminDashboard from './components/AdminDashboard';
@@ -220,11 +221,38 @@ function App() {
 
     return (
       <ErrorBoundary>
-        {profile.role === 'admin' ? (
-          <AdminDashboard session={session} profile={profile} />
-        ) : (
-          <StudentDashboard session={session} profile={profile} />
-        )}
+        <Routes>
+          {/* Main Dashboard / Landing */}
+          <Route path="/" element={
+            profile.role === 'admin' ? (
+              <Navigate to="/admin/overview" replace />
+            ) : (
+              <StudentDashboard session={session} profile={profile} />
+            )
+          } />
+
+          {/* Admin Specific Routes */}
+          <Route path="/admin/*" element={
+            profile.role === 'admin' ? (
+              <AdminDashboard session={session} profile={profile} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } />
+
+          {/* Student Specific Tab Routes */}
+          <Route path="/:tab" element={
+            profile.role !== 'admin' ? (
+              <StudentDashboard session={session} profile={profile} />
+            ) : (
+              <Navigate to="/admin/overview" replace />
+            )
+          } />
+
+          {/* Global Redirects */}
+          <Route path="/login" element={<Navigate to="/" replace />} />
+          <Route path="/signup" element={<Navigate to="/" replace />} />
+        </Routes>
       </ErrorBoundary>
     );
   }
