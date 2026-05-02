@@ -297,6 +297,7 @@ function App() {
                         <div className="hero-actions fade-in-up delay-3">
                           <Link to="/signup" className="btn btn-primary btn-large" style={{ textDecoration: 'none' }}>Start Your Project <ArrowRight size={20} /></Link>
                           <Link to="/login" className="btn btn-secondary btn-large" style={{ textDecoration: 'none' }}>Sign In</Link>
+                          <a href="https://aayush-sharma-beige.vercel.app/" target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-large" style={{ textDecoration: 'none', border: '1px solid var(--glass-border)' }}>About Developer</a>
                         </div>
                         <div className="hero-credits fade-in-up delay-3">
                           <div className="credit-card">

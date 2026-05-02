@@ -563,8 +563,8 @@ function AdminDashboard({ session, profile }) {
                         <tr key={user.id} style={{ borderBottom: '1px solid var(--glass-border)', transition: 'background 0.2s' }} className="user-row-hover">
                           <td style={{ padding: '1.2rem 1.5rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                              <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
-                                {user.full_name?.charAt(0)}
+                              <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, overflow: 'hidden' }}>
+                                {user.avatar_url ? <img src={user.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : user.full_name?.charAt(0)}
                               </div>
                               <div>
                                 <p style={{ fontWeight: 700, fontSize: '0.95rem' }}>{user.full_name}</p>

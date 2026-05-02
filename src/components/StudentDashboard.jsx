@@ -87,6 +87,8 @@ function StudentDashboard({ session, profile }) {
   // Profile Form State additions
   const [formDevRole, setFormDevRole] = useState(profile?.dev_role || '');
   const [formResume, setFormResume] = useState(profile?.resume_url || '');
+  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '');
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
 
   const triggerHaptic = (pattern = 10) => {
@@ -309,26 +311,71 @@ function StudentDashboard({ session, profile }) {
 
   const handleSaveProfile = async () => {
     setSaving(true);
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        full_name: formName,
-        skills: formSkills.split(',').map(s => s.trim()).filter(s => s),
-        whatsapp_no: formWhatsapp,
-        linkedin_url: formLinkedin,
-        github_url: formGithub,
-        dev_role: formDevRole,
-        resume_url: formResume
-      })
-      .eq('id', profile.id);
-    
-    if (!error) {
-      alert("Profile updated successfully!");
-      window.location.reload(); // Refresh to update global profile state
-    } else {
-      alert("Error updating profile: " + error.message);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: formName,
+          skills: formSkills.split(',').map(s => s.trim()).filter(s => s),
+          whatsapp_no: formWhatsapp,
+          linkedin_url: formLinkedin,
+          github_url: formGithub,
+          dev_role: formDevRole,
+          resume_url: formResume
+        })
+        .eq('id', profile.id);
+      
+      if (error) throw error;
+      alert('Profile synced with cloud successfully!');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Error updating profile: ' + error.message);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
+  };
+
+  const handleAvatarUpload = async (event) => {
+    try {
+      setUploadingAvatar(true);
+
+      if (!event.target.files || event.target.files.length === 0) {
+        throw new Error('You must select an image to upload.');
+      }
+
+      const file = event.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${session.user.id}/${Math.random()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      let { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', session.user.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      setAvatarUrl(publicUrl);
+      alert('Profile picture updated!');
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setUploadingAvatar(false);
+    }
   };
 
   const fetchActivity = async () => {
@@ -1745,15 +1792,21 @@ function StudentDashboard({ session, profile }) {
             <p className="subtitle">Manage your professional identity and public bio.</p>
             
             <div className="glass-panel" style={{ padding: '3rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', marginBottom: '3rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '2rem' }}>
-                 <div style={{ width: '100px', height: '100px', borderRadius: '32px', background: 'var(--gradient-blue)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', fontWeight: 800, boxShadow: 'var(--shadow-md)' }}>
-                   {profile?.full_name?.charAt(0)}
-                 </div>
-                 <div>
-                    <h2 style={{ fontSize: '1.8rem', fontWeight: 800 }}>{profile?.full_name}</h2>
-                    <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{profile?.dev_role || 'Mechatronics Engineer'}</p>
-                    <div className="badge badge-green" style={{ marginTop: '0.5rem' }}>Verified Account</div>
-                 </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', marginBottom: '3rem', flexWrap: 'wrap' }}>
+                <div style={{ position: 'relative' }}>
+                  <div style={{ width: '120px', height: '120px', borderRadius: '35px', background: 'var(--gradient-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: '3rem', boxShadow: '0 20px 40px rgba(0, 113, 227, 0.3)', overflow: 'hidden' }}>
+                    {avatarUrl ? <img src={avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : profile?.full_name?.charAt(0)}
+                  </div>
+                  <label className="avatar-upload-btn" style={{ position: 'absolute', bottom: '-5px', right: '-5px', width: '40px', height: '40px', borderRadius: '12px', background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '3px solid var(--bg-secondary)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
+                    <PlusCircle size={20} />
+                    <input type="file" accept="image/*" onChange={handleAvatarUpload} disabled={uploadingAvatar} style={{ display: 'none' }} />
+                  </label>
+                </div>
+                <div>
+                    <h2 style={{ fontSize: '2.2rem', fontWeight: 800, marginBottom: '0.2rem' }}>{profile?.full_name}</h2>
+                    <p style={{ color: 'var(--text-secondary)', fontWeight: 600, fontSize: '1.1rem' }}>{profile?.dev_role || 'Mechatronics Engineer'}</p>
+                    <div className="badge badge-green" style={{ marginTop: '0.8rem' }}>Verified Account</div>
+                </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
@@ -1818,8 +1871,8 @@ function StudentDashboard({ session, profile }) {
               ) : (
                 <div style={{ padding: '0.5rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-                    <div style={{ width: '64px', height: '64px', borderRadius: '20px', background: 'var(--gradient-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: '2rem', boxShadow: 'var(--shadow-sm)', flexShrink: 0 }}>
-                      {viewProfileData.full_name?.charAt(0) || '?'}
+                    <div style={{ width: '64px', height: '64px', borderRadius: '20px', background: 'var(--gradient-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: '2rem', boxShadow: 'var(--shadow-sm)', flexShrink: 0, overflow: 'hidden' }}>
+                      {viewProfileData.avatar_url ? <img src={viewProfileData.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (viewProfileData.full_name?.charAt(0) || '?')}
                     </div>
                     <div style={{ flex: 1, minWidth: '200px' }}>
                       <h2 style={{ fontSize: 'clamp(1.4rem, 5vw, 1.8rem)', fontWeight: 800, lineHeight: 1.2, marginBottom: '0.2rem' }}>{viewProfileData.full_name}</h2>
