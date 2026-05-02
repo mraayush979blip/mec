@@ -1393,12 +1393,12 @@ function StudentDashboard({ session, profile }) {
                     {myRequests.length === 0 ? (
                         <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No sent requests yet.</div>
                     ) : myRequests.map(req => (
-                      <div key={req.id} className="glass-panel fade-in-up" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
+                      <div key={req.id} className="glass-panel fade-in-up" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                        <div style={{ flex: 1, minWidth: '200px' }}>
                           <p style={{ fontWeight: 800, fontSize: '1.1rem' }}>{req.teams?.team_name || req.team_listings?.team_name}</p>
                           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{req.teams?.events?.title || req.team_listings?.hackathon_name}</p>
                           {req.status === 'approved' && (
-                             <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+                             <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                 <span className="badge badge-green" style={{ fontSize: '0.65rem' }}>Contact Lead: {req.teams?.profiles?.whatsapp_no || req.team_listings?.profiles?.whatsapp_no || 'Check Profile'}</span>
                              </div>
                           )}
@@ -1416,12 +1416,12 @@ function StudentDashboard({ session, profile }) {
                     {(myInvitations || []).filter(inv => inv.status === 'pending').length === 0 ? (
                         <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No pending invitations.</div>
                     ) : myInvitations.filter(inv => inv.status === 'pending').map(inv => (
-                      <div key={inv.id} className="glass-panel fade-in-up" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
+                      <div key={inv.id} className="glass-panel fade-in-up" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                        <div style={{ flex: 1, minWidth: '200px' }}>
                           <p style={{ fontWeight: 800, fontSize: '1.1rem' }}>{inv.teams?.team_name}</p>
                           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Invited by {inv.teams?.profiles?.full_name}</p>
                         </div>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                           <button className="btn btn-primary" style={{ padding: '0.5rem 1rem' }} onClick={() => handleRequestResponse(inv.id, 'approved', profile.id, inv.team_id)}>Accept</button>
                           <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem', color: '#FF3B30' }} onClick={() => handleRequestResponse(inv.id, 'rejected', profile.id, inv.team_id)}>Decline</button>
                         </div>
@@ -1436,14 +1436,14 @@ function StudentDashboard({ session, profile }) {
                         <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No approvals or updates.</div>
                     ) : incomingRequests.map(req => (
                       <div key={req.id} className="glass-panel fade-in-up" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                <div style={{ width: '60px', height: '60px', borderRadius: '18px', background: req.source === 'invitation' ? 'var(--gradient-purple)' : 'var(--gradient-blue)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', minWidth: '200px', flex: 1 }}>
+                                <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: req.source === 'invitation' ? 'var(--gradient-purple)' : 'var(--gradient-blue)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.5rem', flexShrink: 0 }}>
                                     {req.profiles?.full_name?.charAt(0)}
                                 </div>
-                                <div>
-                                    <h3 style={{ fontSize: '1.3rem', fontWeight: 800, cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleViewProfile(req.applicant_id)}>{req.profiles?.full_name}</h3>
-                                    <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <h3 style={{ fontSize: '1.2rem', fontWeight: 800, cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} onClick={() => handleViewProfile(req.applicant_id)}>{req.profiles?.full_name}</h3>
+                                    <p style={{ color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                       {req.source === 'invitation'
                                         ? `Responded to invite for: ${req.teams?.team_name || req.team_listings?.team_name}`
                                         : `Applying for: ${req.teams?.team_name || req.team_listings?.team_name}`
@@ -1453,13 +1453,13 @@ function StudentDashboard({ session, profile }) {
                             </div>
                             {/* Show action buttons only for pending applications */}
                             {req.status === 'pending' ? (
-                              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                  <button className="btn btn-primary" style={{ background: '#34C759', boxShadow: '0 8px 16px rgba(52, 199, 89, 0.3)' }} onClick={() => handleRequestResponse(req.id, 'approved', req.applicant_id, req.team_id)}>Approve</button>
-                                  <button className="btn btn-secondary" style={{ color: '#FF3B30' }} onClick={() => handleRequestResponse(req.id, 'rejected', req.applicant_id, req.team_id)}>Reject</button>
+                              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                  <button className="btn btn-primary" style={{ background: '#34C759', boxShadow: '0 8px 16px rgba(52, 199, 89, 0.3)', padding: '0.6rem 1rem', fontSize: '0.8rem' }} onClick={() => handleRequestResponse(req.id, 'approved', req.applicant_id, req.team_id)}>Approve</button>
+                                  <button className="btn btn-secondary" style={{ color: '#FF3B30', padding: '0.6rem 1rem', fontSize: '0.8rem' }} onClick={() => handleRequestResponse(req.id, 'rejected', req.applicant_id, req.team_id)}>Reject</button>
                               </div>
                             ) : (
-                              <span className={`badge ${req.status === 'approved' ? 'badge-green' : 'badge-red'}`} style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}>
-                                {req.status === 'approved' ? '✓ Accepted' : '✗ Declined'}
+                              <span className={`badge ${req.status === 'approved' ? 'badge-green' : 'badge-red'}`} style={{ fontSize: '0.75rem', padding: '0.5rem 1rem', whiteSpace: 'nowrap' }}>
+                                {req.status === 'approved' ? '✓ ACCEPTED' : '✗ DECLINED'}
                               </span>
                             )}
                         </div>
@@ -1492,17 +1492,17 @@ function StudentDashboard({ session, profile }) {
                     {allRequests.length === 0 ? (
                         <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No platform activity yet.</div>
                     ) : allRequests.map(req => (
-                      <div key={req.id} className="glass-panel fade-in-up" style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                           <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div key={req.id} className="glass-panel fade-in-up" style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: '200px' }}>
+                           <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               <Users size={16} />
                            </div>
-                           <div>
+                           <div style={{ flex: 1 }}>
                               <p style={{ fontSize: '0.9rem', fontWeight: 700 }}><span style={{ color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleViewProfile(req.applicant_id)}>{req.profiles?.full_name}</span> requested to join <span style={{ color: 'var(--text-primary)' }}>{req.teams?.team_name || 'a team'}</span></p>
                               <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{new Date(req.created_at).toLocaleString()}</p>
                            </div>
                         </div>
-                        <span className={`badge ${req.status === 'approved' ? 'badge-green' : req.status === 'rejected' ? 'badge-red' : 'badge-blue'}`} style={{ fontSize: '0.65rem' }}>
+                        <span className={`badge ${req.status === 'approved' ? 'badge-green' : req.status === 'rejected' ? 'badge-red' : 'badge-blue'}`} style={{ fontSize: '0.65rem', whiteSpace: 'nowrap' }}>
                           {req.status}
                         </span>
                       </div>
@@ -1627,9 +1627,14 @@ function StudentDashboard({ session, profile }) {
                 </div>
               </div>
 
-              <button className="btn btn-primary" style={{ width: '100%', marginTop: '2rem', padding: '1.2rem' }} onClick={handleSaveProfile} disabled={saving}>
-                {saving ? 'Syncing Profile...' : 'Save Professional Profile'}
-              </button>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem', flexWrap: 'wrap' }}>
+                <button className="btn btn-primary" style={{ flex: 1, minWidth: '250px', padding: '1.2rem' }} onClick={handleSaveProfile} disabled={saving}>
+                  {saving ? 'Syncing Profile...' : 'Save Professional Profile'}
+                </button>
+                <button className="btn btn-secondary" style={{ padding: '1.2rem 1.5rem', background: 'rgba(255, 59, 48, 0.1)', color: '#FF3B30', flexShrink: 0 }} onClick={() => supabase.auth.signOut()}>
+                  <LogOut size={20} style={{ marginRight: '0.5rem' }}/> Sign Out
+                </button>
+              </div>
             </div>
           </div>
         )}
