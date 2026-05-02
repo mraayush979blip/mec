@@ -141,7 +141,7 @@ function AdminDashboard({ session, profile }) {
         description: hackDesc,
         date: hackDate,
         link: hackLink,
-        image_url: hackImage,
+        image_url: hackImage || 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&q=80&w=1000',
         source: hackSource
     };
 
