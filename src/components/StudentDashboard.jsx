@@ -154,7 +154,7 @@ function StudentDashboard({ session, profile }) {
     setLoadingListings(true);
     const { data, error } = await supabase
       .from('team_listings')
-      .select('*, profiles(full_name, dev_role, skills)')
+      .select('*, profiles!creator_id(full_name, dev_role, skills)')
       .order('created_at', { ascending: false });
     
     if (error) {
@@ -248,7 +248,7 @@ function StudentDashboard({ session, profile }) {
     // Fetch Student Listings
     const { data: studentListings, error: listError } = await supabase
       .from('team_listings')
-      .select('*, profiles(full_name, dev_role, skills)')
+      .select('*, profiles!creator_id(full_name, dev_role, skills)')
       .order('created_at', { ascending: false });
     
     if (listError) console.error("Error fetching student listings for feed:", listError);
@@ -532,11 +532,11 @@ function StudentDashboard({ session, profile }) {
       .from('teams')
       .select(`
         *,
-        profiles(full_name),
+        profiles!creator_id(full_name),
         join_requests(
           id,
           status,
-          profiles(full_name)
+          profiles!applicant_id(full_name)
         )
       `)
       .eq('event_id', selectedEvent.id);
