@@ -45,6 +45,10 @@ function StudentDashboard({ session, profile }) {
   // My Teams State
   const [myJoinedTeams, setMyJoinedTeams] = useState([]);
 
+  // Public Profile Modal State
+  const [viewProfileId, setViewProfileId] = useState(null);
+  const [viewProfileData, setViewProfileData] = useState(null);
+
   // Profile Form State
   const [formName, setFormName] = useState(profile?.full_name || '');
   const [formSkills, setFormSkills] = useState(profile?.skills?.join(', ') || '');
@@ -591,6 +595,36 @@ function StudentDashboard({ session, profile }) {
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
+  const handleViewProfile = async (userId) => {
+    setViewProfileId(userId);
+    setViewProfileData(null);
+    try {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      const { data: createdTeams } = await supabase
+        .from('teams')
+        .select('*, events(title)')
+        .eq('creator_id', userId);
+        
+      const { data: joinedTeams } = await supabase
+        .from('team_members')
+        .select('*, teams(team_name, events(title))')
+        .eq('user_id', userId);
+
+      setViewProfileData({
+        ...profileData,
+        createdTeams: createdTeams || [],
+        joinedTeams: joinedTeams || []
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleLeaveTeam = async (teamId) => {
     if (!window.confirm("Are you sure you want to leave this team?")) return;
     const { error } = await supabase.from('team_members').delete().eq('team_id', teamId).eq('user_id', profile.id);
@@ -771,7 +805,7 @@ function StudentDashboard({ session, profile }) {
                       marginBottom: '-0.5rem',
                       boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                     }}>
-                      {event.source_type === 'admin' ? 'Official Admin Post' : `Student Post: ${event.profiles?.full_name}`}
+                      {event.source_type === 'admin' ? 'Official Admin Post' : <span style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleViewProfile(event.creator_id)}>Student Post: {event.profiles?.full_name}</span>}
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -1075,7 +1109,7 @@ function StudentDashboard({ session, profile }) {
                           {listing.profiles?.full_name?.charAt(0)}
                         </div>
                         <div>
-                          <p style={{ fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.01em' }}>{listing.profiles?.full_name}</p>
+                          <p style={{ fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.01em', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleViewProfile(listing.creator_id)}>{listing.profiles?.full_name}</p>
                           <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{listing.profiles?.dev_role || 'Team Lead'}</p>
                         </div>
                       </div>
@@ -1162,7 +1196,7 @@ function StudentDashboard({ session, profile }) {
                             {student.full_name.charAt(0)}
                           </div>
                           <div>
-                            <p style={{ fontWeight: 800 }}>{student.full_name}</p>
+                            <p style={{ fontWeight: 800, cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleViewProfile(student.id)}>{student.full_name}</p>
                             <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{student.dev_role} • {student.skills?.slice(0, 3).join(', ')}</p>
                           </div>
                         </div>
@@ -1219,7 +1253,7 @@ function StudentDashboard({ session, profile }) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                     <div>
                       <h3 style={{ fontSize: '1.5rem', fontWeight: 800 }}>{team.icon_url} {team.team_name}</h3>
-                      <p style={{ color: 'var(--accent)', fontWeight: 700 }}>Lead: {team.profiles?.full_name}</p>
+                      <p style={{ color: 'var(--accent)', fontWeight: 700, cursor: 'pointer' }} onClick={() => handleViewProfile(team.creator_id)}>Lead: <span style={{ textDecoration: 'underline' }}>{team.profiles?.full_name}</span></p>
                       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                         <span className="badge badge-blue" style={{ fontSize: '0.65rem' }}>{members.length} member{members.length !== 1 ? 's' : ''}</span>
                         {pendingApps.length > 0 && <span className="badge badge-purple" style={{ fontSize: '0.65rem' }}>{pendingApps.length} pending</span>}
@@ -1273,7 +1307,7 @@ function StudentDashboard({ session, profile }) {
                                 {m.profiles?.full_name?.charAt(0) || '?'}
                               </div>
                               <div>
-                                <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{m.profiles?.full_name || 'Unknown'}</span>
+                                <span style={{ fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleViewProfile(m.user_id)}>{m.profiles?.full_name || 'Unknown'}</span>
                                 <span className={`badge ${m.role === 'creator' ? 'badge-purple' : 'badge-blue'}`} style={{ fontSize: '0.6rem', marginLeft: '0.5rem' }}>{m.role === 'creator' ? 'Lead' : 'Member'}</span>
                               </div>
                             </div>
@@ -1290,7 +1324,7 @@ function StudentDashboard({ session, profile }) {
                           <div style={{ display: 'grid', gap: '0.6rem' }}>
                             {allApps.map(req => (
                               <div key={req.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{req.profiles?.full_name || 'Unknown'}</span>
+                                <span style={{ fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleViewProfile(req.applicant_id)}>{req.profiles?.full_name || 'Unknown'}</span>
                                 <span className={`badge ${req.status === 'approved' ? 'badge-green' : req.status === 'rejected' ? 'badge-red' : 'badge-blue'}`} style={{ fontSize: '0.65rem' }}>
                                   {req.status}
                                 </span>
@@ -1309,7 +1343,7 @@ function StudentDashboard({ session, profile }) {
                           <div style={{ display: 'grid', gap: '0.6rem' }}>
                             {invitations.map(inv => (
                               <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{inv.profiles?.full_name || 'Unknown'}</span>
+                                <span style={{ fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleViewProfile(inv.applicant_id)}>{inv.profiles?.full_name || 'Unknown'}</span>
                                 <span className={`badge ${inv.status === 'approved' ? 'badge-green' : inv.status === 'rejected' ? 'badge-red' : 'badge-blue'}`} style={{ fontSize: '0.65rem' }}>
                                   {inv.status === 'approved' ? 'Accepted' : inv.status === 'rejected' ? 'Declined' : 'Pending'}
                                 </span>
@@ -1410,7 +1444,7 @@ function StudentDashboard({ session, profile }) {
                                     {req.profiles?.full_name?.charAt(0)}
                                 </div>
                                 <div>
-                                    <h3 style={{ fontSize: '1.3rem', fontWeight: 800 }}>{req.profiles?.full_name}</h3>
+                                    <h3 style={{ fontSize: '1.3rem', fontWeight: 800, cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleViewProfile(req.applicant_id)}>{req.profiles?.full_name}</h3>
                                     <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
                                       {req.source === 'invitation'
                                         ? `Responded to invite for: ${req.teams?.team_name || req.team_listings?.team_name}`
@@ -1466,7 +1500,7 @@ function StudentDashboard({ session, profile }) {
                               <Users size={16} />
                            </div>
                            <div>
-                              <p style={{ fontSize: '0.9rem', fontWeight: 700 }}><span style={{ color: 'var(--accent)' }}>{req.profiles?.full_name}</span> requested to join <span style={{ color: 'var(--text-primary)' }}>{req.teams?.team_name || 'a team'}</span></p>
+                              <p style={{ fontSize: '0.9rem', fontWeight: 700 }}><span style={{ color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleViewProfile(req.applicant_id)}>{req.profiles?.full_name}</span> requested to join <span style={{ color: 'var(--text-primary)' }}>{req.teams?.team_name || 'a team'}</span></p>
                               <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{new Date(req.created_at).toLocaleString()}</p>
                            </div>
                         </div>
@@ -1598,6 +1632,84 @@ function StudentDashboard({ session, profile }) {
               <button className="btn btn-primary" style={{ width: '100%', marginTop: '2rem', padding: '1.2rem' }} onClick={handleSaveProfile} disabled={saving}>
                 {saving ? 'Syncing Profile...' : 'Save Professional Profile'}
               </button>
+            </div>
+          </div>
+        )}
+
+        {viewProfileId && (
+          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={(e) => { if (e.target === e.currentTarget) setViewProfileId(null); }}>
+            <div className="glass-panel slide-up" style={{ width: '90%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', background: 'var(--bg-secondary)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <button className="btn btn-secondary" style={{ position: 'absolute', top: '1rem', right: '1rem', padding: '0.5rem' }} onClick={() => setViewProfileId(null)}>✕</button>
+              
+              {!viewProfileData ? (
+                <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Fetching profile...</div>
+              ) : (
+                <div style={{ padding: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+                    <div style={{ width: '80px', height: '80px', borderRadius: '24px', background: 'var(--gradient-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: '2.5rem', boxShadow: 'var(--shadow-sm)' }}>
+                      {viewProfileData.full_name?.charAt(0) || '?'}
+                    </div>
+                    <div>
+                      <h2 style={{ fontSize: '1.8rem', fontWeight: 800 }}>{viewProfileData.full_name}</h2>
+                      <p style={{ color: 'var(--accent)', fontWeight: 700, fontSize: '1.1rem' }}>{viewProfileData.dev_role || 'Developer'}</p>
+                      <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.8rem', flexWrap: 'wrap' }}>
+                        {viewProfileData.github_url && <a href={viewProfileData.github_url} target="_blank" rel="noreferrer" className="badge badge-purple" style={{ textDecoration: 'none', padding: '0.5rem 1rem' }}><GitBranch size={14} style={{marginRight: '6px', display: 'inline-block', verticalAlign: 'middle'}}/> GitHub</a>}
+                        {viewProfileData.linkedin_url && <a href={viewProfileData.linkedin_url} target="_blank" rel="noreferrer" className="badge badge-blue" style={{ textDecoration: 'none', padding: '0.5rem 1rem' }}><Globe size={14} style={{marginRight: '6px', display: 'inline-block', verticalAlign: 'middle'}}/> LinkedIn</a>}
+                        {viewProfileData.resume_url && <a href={viewProfileData.resume_url} target="_blank" rel="noreferrer" className="badge badge-green" style={{ textDecoration: 'none', padding: '0.5rem 1rem' }}><FileText size={14} style={{marginRight: '6px', display: 'inline-block', verticalAlign: 'middle'}}/> Resume</a>}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '2.5rem' }}>
+                    <p style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '0.8rem', letterSpacing: '0.05em' }}>Technical Skills</p>
+                    {viewProfileData.skills?.length > 0 ? (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        {viewProfileData.skills.map((skill, i) => (
+                          <span key={i} className="badge badge-blue" style={{ fontSize: '0.85rem' }}>{skill}</span>
+                        ))}
+                      </div>
+                    ) : <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>No skills listed.</p>}
+                  </div>
+
+                  <div>
+                    <p style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '1rem', letterSpacing: '0.05em' }}>Platform Activity</p>
+                    
+                    {viewProfileData.createdTeams?.length > 0 && (
+                      <div style={{ marginBottom: '1.5rem' }}>
+                        <p style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase', marginBottom: '0.6rem' }}>Teams Led</p>
+                        <div style={{ display: 'grid', gap: '0.6rem' }}>
+                          {viewProfileData.createdTeams.map(t => (
+                            <div key={t.id} style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontWeight: 800, fontSize: '1.05rem' }}>{t.icon_url} {t.team_name}</span>
+                              <span className="badge badge-purple" style={{ fontSize: '0.7rem' }}>{t.events?.title || 'Global Feed'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {viewProfileData.joinedTeams?.length > 0 && (
+                      <div style={{ marginBottom: '1.5rem' }}>
+                        <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#34C759', textTransform: 'uppercase', marginBottom: '0.6rem' }}>Teams Joined</p>
+                        <div style={{ display: 'grid', gap: '0.6rem' }}>
+                          {viewProfileData.joinedTeams.map(j => (
+                            <div key={j.team_id} style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontWeight: 800, fontSize: '1.05rem' }}>{j.teams?.team_name}</span>
+                              <span className="badge badge-green" style={{ fontSize: '0.7rem' }}>{j.teams?.events?.title || 'Global Feed'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {(!viewProfileData.createdTeams?.length && !viewProfileData.joinedTeams?.length) && (
+                      <div style={{ padding: '2rem', textAlign: 'center', background: 'rgba(0,0,0,0.2)', borderRadius: '16px' }}>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>No public activity yet.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
