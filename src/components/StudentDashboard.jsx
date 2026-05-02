@@ -302,14 +302,14 @@ function StudentDashboard({ session, profile }) {
 
   const fetchActivity = async () => {
     if (!profile?.id) return;
-    // 1. Fetch requests I have sent (Requested Tab)
+
+    // 1. Fetch MY applications (requests I sent to join other teams)
     const { data: myReqs } = await supabase
       .from('join_requests')
       .select(`
         *,
         teams:teams!team_id(
           team_name,
-          event_id,
           events:events!event_id(title),
           profiles:profiles!creator_id(whatsapp_no)
         ),
@@ -324,66 +324,7 @@ function StudentDashboard({ session, profile }) {
       .order('created_at', { ascending: false });
     if (myReqs) setMyRequests(myReqs);
 
-    // 2. Invitations are fetched in step 6 below
-
-    // 3. Fetch requests sent to my teams & listings (Approve Request Tab)
-    const { data: myTeams } = await supabase.from('teams').select('id').eq('creator_id', profile.id);
-    const { data: myListings } = await supabase.from('team_listings').select('id').eq('creator_id', profile.id);
-    
-    const teamIds = (myTeams || []).map(t => t.id);
-    const listingIds = (myListings || []).map(l => l.id);
-
-    if (teamIds.length > 0 || listingIds.length > 0) {
-      let query = supabase
-        .from('join_requests')
-        .select(`
-          *,
-          teams:teams!team_id(team_name, event_id, events:events!event_id(title)),
-          team_listings:team_listings!listing_id(team_name, hackathon_name),
-          profiles:profiles!applicant_id(full_name, skills, branch, email, github_url, linkedin_url, resume_url)
-        `)
-        .eq('status', 'pending')
-        .eq('source', 'application');
-
-      if (teamIds.length > 0 && listingIds.length > 0) {
-        query = query.or(`team_id.in.(${teamIds.join(',')}),listing_id.in.(${listingIds.join(',')})`);
-      } else if (teamIds.length > 0) {
-        query = query.in('team_id', teamIds);
-      } else {
-        query = query.in('listing_id', listingIds);
-      }
-
-      const { data: incoming } = await query.order('created_at', { ascending: false });
-      if (incoming) setIncomingRequests(incoming);
-      else setIncomingRequests([]);
-    } else {
-      setIncomingRequests([]);
-    }
-
-
-    // 4. Fetch invitations I have sent (Recruitment check)
-    const { data: sentInvites } = await supabase
-      .from('join_requests')
-      .select('applicant_id')
-      .eq('source', 'invitation');
-    if (sentInvites) setSentInvitations(sentInvites.map(i => i.applicant_id));
-
-    // 5. Fetch all requests globally
-    const { data: allReqs } = await supabase
-      .from('join_requests')
-      .select(`
-        *,
-        teams:teams!team_id(
-          team_name,
-          event_id,
-          events:events!event_id(title)
-        ),
-        profiles:profiles!applicant_id(full_name)
-      `)
-      .order('created_at', { ascending: false });
-    if (allReqs) setAllRequests(allReqs);
-
-    // 6. Fetch invitations received
+    // 2. Fetch invitations I RECEIVED (other team leads invited me)
     const { data: myInvs } = await supabase
       .from('join_requests')
       .select(`
@@ -394,8 +335,89 @@ function StudentDashboard({ session, profile }) {
         )
       `)
       .eq('applicant_id', profile.id)
-      .eq('source', 'invitation');
+      .eq('source', 'invitation')
+      .order('created_at', { ascending: false });
     if (myInvs) setMyInvitations(myInvs);
+
+    // 3. Fetch INCOMING requests to my teams/listings (for Approvals tab)
+    const { data: myTeams } = await supabase.from('teams').select('id').eq('creator_id', profile.id);
+    const { data: myListings } = await supabase.from('team_listings').select('id').eq('creator_id', profile.id);
+    const teamIds = (myTeams || []).map(t => t.id);
+    const listingIds = (myListings || []).map(l => l.id);
+
+    let allIncoming = [];
+
+    // 3a. Pending applications to my teams
+    if (teamIds.length > 0) {
+      const { data: teamApps } = await supabase
+        .from('join_requests')
+        .select(`
+          *,
+          teams:teams!team_id(team_name, events:events!event_id(title)),
+          profiles:profiles!applicant_id(full_name, skills, branch, email, github_url, linkedin_url, resume_url)
+        `)
+        .in('team_id', teamIds)
+        .eq('status', 'pending')
+        .eq('source', 'application')
+        .order('created_at', { ascending: false });
+      if (teamApps) allIncoming.push(...teamApps);
+    }
+
+    // 3b. Pending applications to my listings
+    if (listingIds.length > 0) {
+      const { data: listApps } = await supabase
+        .from('join_requests')
+        .select(`
+          *,
+          team_listings:team_listings!listing_id(team_name, hackathon_name),
+          profiles:profiles!applicant_id(full_name, skills, branch, email, github_url, linkedin_url, resume_url)
+        `)
+        .in('listing_id', listingIds)
+        .eq('status', 'pending')
+        .eq('source', 'application')
+        .order('created_at', { ascending: false });
+      if (listApps) allIncoming.push(...listApps);
+    }
+
+    // 3c. Invitations I sent + their responses (so I can see accepted/rejected)
+    if (teamIds.length > 0) {
+      const { data: sentInviteResults } = await supabase
+        .from('join_requests')
+        .select(`
+          *,
+          teams:teams!team_id(team_name, events:events!event_id(title)),
+          profiles:profiles!applicant_id(full_name, skills)
+        `)
+        .in('team_id', teamIds)
+        .eq('source', 'invitation')
+        .neq('status', 'pending')
+        .order('created_at', { ascending: false });
+      if (sentInviteResults) allIncoming.push(...sentInviteResults);
+    }
+
+    setIncomingRequests(allIncoming);
+
+    // 4. Track which students I've already invited (for the invite button)
+    if (teamIds.length > 0) {
+      const { data: sentInvites } = await supabase
+        .from('join_requests')
+        .select('applicant_id')
+        .in('team_id', teamIds)
+        .eq('source', 'invitation');
+      if (sentInvites) setSentInvitations(sentInvites.map(i => i.applicant_id));
+    }
+
+    // 5. Fetch global system log
+    const { data: allReqs } = await supabase
+      .from('join_requests')
+      .select(`
+        *,
+        teams:teams!team_id(team_name),
+        profiles:profiles!applicant_id(full_name)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (allReqs) setAllRequests(allReqs);
   };
 
   const handleSelectEvent = async (event) => {
@@ -546,26 +568,41 @@ function StudentDashboard({ session, profile }) {
   };
 
   const handleRequestResponse = async (requestId, status, applicantId, teamId) => {
-    // status can be 'approved' or 'rejected'
-    const { error } = await supabase
+    // Update the request status in DB
+    const { data: updated, error } = await supabase
       .from('join_requests')
       .update({ status })
-      .eq('id', requestId);
+      .eq('id', requestId)
+      .select();
     
     if (error) {
-      alert(error.message);
+      alert('Error: ' + error.message);
       return;
     }
 
-    if (status === 'approved' && teamId) {
-      // Also insert into team_members (only for on-campus events)
-      await supabase.from('team_members').insert([
-        { team_id: teamId, user_id: applicantId, role: 'member' }
-      ]);
+    // Check if the update actually changed a row (RLS might block it)
+    if (!updated || updated.length === 0) {
+      alert('Update failed — you may not have permission to change this request. Please contact the team lead.');
+      return;
     }
 
-    alert(`Request ${status}!`);
-    fetchActivity(); // Refresh
+    // If approved, add the user to the team
+    if (status === 'approved' && teamId) {
+      const { error: memberError } = await supabase.from('team_members').insert([
+        { team_id: teamId, user_id: applicantId, role: 'member' }
+      ]);
+      if (memberError && memberError.code !== '23505') {
+        console.error('Error adding team member:', memberError);
+      }
+    }
+
+    // Immediately update local state so UI reflects the change
+    setMyInvitations(prev => (prev || []).map(inv =>
+      inv.id === requestId ? { ...inv, status } : inv
+    ));
+    setIncomingRequests(prev => (prev || []).filter(req => req.id !== requestId));
+
+    alert(`Request ${status} successfully!`);
   };
 
   return (
@@ -1208,25 +1245,38 @@ function StudentDashboard({ session, profile }) {
                 {activityTab === 'approve' && (
                   <div style={{ display: 'grid', gap: '1.5rem' }}>
                     {incomingRequests.length === 0 ? (
-                        <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No pending approvals.</div>
+                        <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No approvals or updates.</div>
                     ) : incomingRequests.map(req => (
                       <div key={req.id} className="glass-panel fade-in-up" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                <div style={{ width: '60px', height: '60px', borderRadius: '18px', background: 'var(--gradient-purple)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.5rem' }}>
+                                <div style={{ width: '60px', height: '60px', borderRadius: '18px', background: req.source === 'invitation' ? 'var(--gradient-purple)' : 'var(--gradient-blue)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.5rem' }}>
                                     {req.profiles?.full_name?.charAt(0)}
                                 </div>
                                 <div>
                                     <h3 style={{ fontSize: '1.3rem', fontWeight: 800 }}>{req.profiles?.full_name}</h3>
-                                    <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Applying for: {req.teams?.team_name || req.team_listings?.team_name}</p>
+                                    <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                      {req.source === 'invitation'
+                                        ? `Responded to invite for: ${req.teams?.team_name || req.team_listings?.team_name}`
+                                        : `Applying for: ${req.teams?.team_name || req.team_listings?.team_name}`
+                                      }
+                                    </p>
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <button className="btn btn-primary" style={{ background: '#34C759', boxShadow: '0 8px 16px rgba(52, 199, 89, 0.3)' }} onClick={() => handleRequestResponse(req.id, 'approved', req.applicant_id, req.team_id)}>Approve</button>
-                                <button className="btn btn-secondary" style={{ color: '#FF3B30' }} onClick={() => handleRequestResponse(req.id, 'rejected', req.applicant_id, req.team_id)}>Reject</button>
-                            </div>
+                            {/* Show action buttons only for pending applications */}
+                            {req.status === 'pending' ? (
+                              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                  <button className="btn btn-primary" style={{ background: '#34C759', boxShadow: '0 8px 16px rgba(52, 199, 89, 0.3)' }} onClick={() => handleRequestResponse(req.id, 'approved', req.applicant_id, req.team_id)}>Approve</button>
+                                  <button className="btn btn-secondary" style={{ color: '#FF3B30' }} onClick={() => handleRequestResponse(req.id, 'rejected', req.applicant_id, req.team_id)}>Reject</button>
+                              </div>
+                            ) : (
+                              <span className={`badge ${req.status === 'approved' ? 'badge-green' : 'badge-red'}`} style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}>
+                                {req.status === 'approved' ? '✓ Accepted' : '✗ Declined'}
+                              </span>
+                            )}
                         </div>
                         
+                        {req.status === 'pending' && (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.2rem' }}>
                             <div style={{ background: 'var(--accent-light)', padding: '1.2rem', borderRadius: '20px' }}>
                                 <p style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.8rem' }}>Tech Stack</p>
@@ -1243,6 +1293,7 @@ function StudentDashboard({ session, profile }) {
                                 </div>
                             </div>
                         </div>
+                        )}
                       </div>
                     ))}
                   </div>
