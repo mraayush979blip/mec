@@ -738,7 +738,7 @@ function StudentDashboard({ session, profile }) {
       </div>
 
       <header className="glass-header">
-        <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem 2rem' }}>
+        <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 2rem' }}>
           <div className="nav-brand" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
             <div style={{ background: 'var(--gradient-blue)', color: 'white', padding: '0.5rem', borderRadius: '14px', boxShadow: '0 8px 16px rgba(0, 122, 255, 0.3)' }}>
               <Users size={22} />
@@ -762,11 +762,7 @@ function StudentDashboard({ session, profile }) {
           </nav>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-             <div className="glass-panel" style={{ padding: '0.4rem 1rem', borderRadius: '100px', display: 'flex', alignItems: 'center', gap: '0.6rem', border: '1px solid var(--glass-border)' }}>
-               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#34C759', boxShadow: '0 0 8px #34C759' }}></div>
-               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Live</span>
-             </div>
-             <button className="btn" style={{ padding: '0.5rem', background: 'rgba(255, 59, 48, 0.1)', color: '#FF3B30', borderRadius: '12px' }} onClick={() => supabase.auth.signOut()}>
+             <button className="btn desktop-only" style={{ padding: '0.5rem', background: 'rgba(255, 59, 48, 0.1)', color: '#FF3B30', borderRadius: '12px' }} onClick={() => supabase.auth.signOut()}>
                <LogOut size={20} />
              </button>
           </div>

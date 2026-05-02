@@ -790,6 +790,14 @@ body {
   .tab-bar::-webkit-scrollbar {
     display: none;
   }
+
+  .desktop-only {
+    display: none !important;
+  }
+}
+
+.desktop-only {
+  display: inline-flex;
 }
 
 .mobile-bottom-nav {
