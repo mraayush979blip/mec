@@ -226,13 +226,27 @@ function StudentDashboard({ session, profile }) {
   const fetchEvents = async () => {
     setLoading(true);
     const now = new Date().toISOString();
-    const { data, error } = await supabase
+    
+    // Fetch Admin Events
+    const { data: adminEvents } = await supabase
       .from('events')
       .select('*, votes(*)')
       .or(`expires_at.is.null,expires_at.gt.${now}`)
       .order('created_at', { ascending: false });
     
-    if (data) setEvents(data);
+    // Fetch Student Listings
+    const { data: studentListings } = await supabase
+      .from('team_listings')
+      .select('*, profiles:profiles!creator_id(full_name, dev_role, skills)')
+      .order('created_at', { ascending: false });
+
+    // Combine and Sort
+    const combined = [
+      ...(adminEvents || []).map(e => ({ ...e, source_type: 'admin' })),
+      ...(studentListings || []).map(l => ({ ...l, source_type: 'student', title: l.team_name, description: l.description, type: 'recruitment' }))
+    ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    setEvents(combined);
     setLoading(false);
   };
 
@@ -613,7 +627,7 @@ function StudentDashboard({ session, profile }) {
         </div>
         <div className={`mobile-nav-item ${activeTab === 'find_member' ? 'active' : ''}`} onClick={() => handleTabChange('find_member')}>
           <PlusCircle size={22} />
-          <span>Post</span>
+          <span>Recruit</span>
         </div>
         <div className={`mobile-nav-item ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => handleTabChange('activity')}>
           <Activity size={22} />
@@ -671,21 +685,62 @@ function StudentDashboard({ session, profile }) {
             ) : (
               <div style={{ display: 'grid', gap: '1.5rem' }}>
                 {events.map((event) => (
-                  <div key={event.id} className="glass-panel fade-in-up" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                  <div key={event.id} className="glass-panel fade-in-up" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.2rem', border: event.source_type === 'admin' ? '1px solid var(--glass-border)' : '1px solid var(--accent-light)' }}>
+                    
+                    {/* Source Banner */}
+                    <div style={{ 
+                      background: event.source_type === 'admin' ? 'var(--gradient-blue)' : 'var(--gradient-purple)',
+                      color: 'white',
+                      padding: '0.4rem 1.2rem',
+                      borderRadius: '100px',
+                      fontSize: '0.7rem',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      alignSelf: 'flex-start',
+                      marginBottom: '-0.5rem',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                    }}>
+                      {event.source_type === 'admin' ? 'Official Admin Post' : `Student Post: ${event.profiles?.full_name}`}
+                    </div>
+
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.8rem' }}>
-                          <span className={`badge ${event.type === 'poll' ? 'badge-purple' : 'badge-blue'}`}>{event.type}</span>
+                          <span className={`badge ${event.type === 'poll' ? 'badge-purple' : event.type === 'recruitment' ? 'badge-green' : 'badge-blue'}`}>{event.type}</span>
                           {event.expires_at && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: '#FF3B30', fontWeight: 700 }}>
                               <Activity size={14} /> Ends {new Date(event.expires_at).toLocaleDateString()}
                             </div>
                           )}
+                          {event.source_type === 'student' && (
+                            <span className="badge badge-secondary">{event.mode}</span>
+                          )}
                         </div>
                         <h3 style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-0.03em' }}>{event.title}</h3>
+                        {event.source_type === 'student' && (
+                          <p style={{ color: 'var(--accent)', fontWeight: 700, marginTop: '0.2rem' }}>Target: {event.hackathon_name}</p>
+                        )}
                         <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem', fontSize: '1rem', lineHeight: '1.6' }}>{event.description}</p>
                       </div>
                     </div>
+
+                    {event.source_type === 'student' && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                        <div style={{ background: 'var(--accent-light)', padding: '1rem', borderRadius: '14px' }}>
+                          <p style={{ fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.4rem' }}>Skills Needed</p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+                            {event.required_skills?.map((s, i) => <span key={i} style={{ fontSize: '0.8rem', fontWeight: 700 }}>{s}</span>)}
+                          </div>
+                        </div>
+                        <div style={{ background: 'rgba(175, 82, 222, 0.08)', padding: '1rem', borderRadius: '14px' }}>
+                          <p style={{ fontSize: '0.65rem', color: '#AF52DE', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.4rem' }}>Open Roles</p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+                            {event.roles_needed?.map((r, i) => <span key={i} style={{ fontSize: '0.8rem', fontWeight: 700 }}>{r}</span>)}
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {event.type === 'poll' && event.options && (
                       <div style={{ display: 'grid', gap: '0.8rem', background: 'rgba(0,0,0,0.02)', padding: '1.5rem', borderRadius: '20px' }}>
@@ -723,14 +778,22 @@ function StudentDashboard({ session, profile }) {
                     )}
 
                     <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                      {event.know_more_url && (
-                        <button className="btn btn-secondary" onClick={() => window.open(event.know_more_url, '_blank')}>
-                          Details <ArrowRight size={18} />
-                        </button>
-                      )}
-                      {event.is_team_joining_enabled && (
-                        <button className="btn btn-primary" onClick={() => handleSelectEvent(event)}>
-                          {myTeamForEvent?.event_id === event.id ? 'Manage Team' : 'Build a Team'}
+                      {event.source_type === 'admin' ? (
+                        <>
+                          {event.know_more_url && (
+                            <button className="btn btn-secondary" onClick={() => window.open(event.know_more_url, '_blank')}>
+                              Details <ArrowRight size={18} />
+                            </button>
+                          )}
+                          {event.is_team_joining_enabled && (
+                            <button className="btn btn-primary" onClick={() => handleSelectEvent(event)}>
+                              {myTeamForEvent?.event_id === event.id ? 'Manage Team' : 'Build a Team'}
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => handleApplyToListing(event.id)}>
+                          Request to Join Team <Users size={18} />
                         </button>
                       )}
                     </div>
@@ -808,8 +871,8 @@ function StudentDashboard({ session, profile }) {
           <div className="fade-in-up">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem' }}>
               <div>
-                <h1 className="dashboard-title">Find Teammates</h1>
-                <p className="subtitle">Collaborate on global projects. Apply to teams or recruit talent.</p>
+                <h1 className="dashboard-title">My Recruitment Posts</h1>
+                <p className="subtitle">Manage your listings or create a new one to find talent.</p>
               </div>
               <button className="btn btn-primary" onClick={() => setTeamAction(teamAction === 'create_listing' ? null : 'create_listing')}>
                 {teamAction === 'create_listing' ? <><XCircle size={18} /> Close Form</> : <><PlusCircle size={18} /> New Listing</>}

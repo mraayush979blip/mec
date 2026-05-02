@@ -253,42 +253,26 @@ function AdminDashboard({ session, profile }) {
 
       <header className="glass-header">
         <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 2rem' }}>
-          <div className="nav-brand" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{ background: '#34C759', color: 'white', padding: '0.4rem', borderRadius: '12px' }}>
-              <Settings size={20} />
+          <div className="nav-brand" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+            <div style={{ background: '#34C759', color: 'white', padding: '0.5rem', borderRadius: '14px', boxShadow: '0 8px 16px rgba(52, 199, 89, 0.2)' }}>
+              <Settings size={22} />
             </div>
-            Mechatronics <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>Admin</span>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Matchups</span>
+              <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: '#34C759', letterSpacing: '0.1em' }}>Admin Console</span>
+            </div>
           </div>
           
-          <nav style={{ display: 'flex', gap: '1rem' }}>
-            <button 
-              className={`btn ${activeTab === 'overview' ? 'btn-secondary' : ''}`} 
-              style={{ background: activeTab === 'overview' ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', padding: '0.5rem 1rem' }}
-              onClick={() => handleTabChange('overview')}
-            >
-              Overview
-            </button>
-            <button 
-              className={`btn ${activeTab === 'events' ? 'btn-secondary' : ''}`} 
-              style={{ background: activeTab === 'events' ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', padding: '0.5rem 1rem' }}
-              onClick={() => handleTabChange('events')}
-            >
-              Events
-            </button>
-            <button 
-              className={`btn ${activeTab === 'discovery' ? 'btn-secondary' : ''}`}
-              style={{ background: activeTab === 'discovery' ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', padding: '0.5rem 1rem' }}
-              onClick={() => handleTabChange('discovery')}
-            >
-              Discovery
-            </button>
-            <button 
-              className={`btn ${activeTab === 'create' ? 'btn-secondary' : ''}`}
-              style={{ background: activeTab === 'create' ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', padding: '0.5rem 1rem' }}
-              onClick={() => handleTabChange('create')}
-            >
-              Create New
-            </button>
+          <nav className="desktop-nav" style={{ display: 'flex', gap: '0.5rem' }}>
+            {tabs.map(tab => (
+              <div 
+                key={tab} 
+                className={`nav-item ${activeTab === tab ? 'active' : ''}`}
+                onClick={() => handleTabChange(tab)}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </div>
+            ))}
           </nav>
 
           <button className="btn" style={{ padding: '0.5rem', background: 'transparent' }} onClick={() => supabase.auth.signOut()}>

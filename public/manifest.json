@@ -1,15 +1,17 @@
 {
-  "short_name": "Mechatronics",
-  "name": "Mechatronics Team Matchmaking",
+  "name": "Matchups - Student Collaboration Hub",
+  "short_name": "Matchups",
+  "description": "Find the perfect team and discover cutting-edge campus events.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0c",
+  "theme_color": "#007AFF",
   "icons": [
     {
-      "src": "favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
-  ],
-  "start_url": ".",
-  "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#000000"
+  ]
 }

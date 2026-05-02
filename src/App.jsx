@@ -46,10 +46,55 @@ function App() {
       }
     });
 
+    // Register Service Worker for PWA & Notifications
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then(registration => {
+          console.log('SW registered: ', registration);
+        }).catch(registrationError => {
+          console.log('SW registration failed: ', registrationError);
+        });
+      });
+    }
+
+    // Realtime Notifications for new events/listings
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'events' },
+        (payload) => {
+          showNotification('New Admin Event!', payload.new.title);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'team_listings' },
+        (payload) => {
+          showNotification('New Student Post!', payload.new.team_name);
+        }
+      )
+      .subscribe();
+
     return () => {
       subscription.unsubscribe();
+      supabase.removeChannel(channel);
     };
   }, [authFlow, isVerified]);
+
+  const showNotification = (title, body) => {
+    if (!("Notification" in window)) return;
+    
+    if (Notification.permission === "granted") {
+      new Notification(title, { body, icon: '/logo.png' });
+    } else if (Notification.permission !== "denied") {
+      Notification.requestPermission().then(permission => {
+        if (permission === "granted") {
+          new Notification(title, { body, icon: '/logo.png' });
+        }
+      });
+    }
+  };
 
 
 
