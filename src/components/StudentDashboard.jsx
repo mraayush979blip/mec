@@ -364,7 +364,6 @@ function StudentDashboard({ session, profile }) {
           profiles:profiles!join_requests_applicant_id_fkey(full_name, skills, branch, email, github_url, linkedin_url, resume_url)
         `)
         .in('team_id', teamIds)
-        .eq('status', 'pending')
         .eq('source', 'application')
         .order('created_at', { ascending: false });
       if (teamApps) allIncoming.push(...teamApps);
@@ -380,7 +379,6 @@ function StudentDashboard({ session, profile }) {
           profiles:profiles!join_requests_applicant_id_fkey(full_name, skills, branch, email, github_url, linkedin_url, resume_url)
         `)
         .in('listing_id', listingIds)
-        .eq('status', 'pending')
         .eq('source', 'application')
         .order('created_at', { ascending: false });
       if (listApps) allIncoming.push(...listApps);
