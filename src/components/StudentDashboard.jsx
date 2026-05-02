@@ -354,43 +354,38 @@ function StudentDashboard({ session, profile }) {
     }
     if (myInvites) setMyInvitations(myInvites);
 
-    // 3. Fetch requests sent to my teams (Approve Request Tab)
-    const { data: myTeams } = await supabase
-      .from('teams')
-      .select('id')
-      .eq('creator_id', profile.id);
+    // 3. Fetch requests sent to my teams & listings (Approve Request Tab)
+    const { data: myTeams } = await supabase.from('teams').select('id').eq('creator_id', profile.id);
+    const { data: myListings } = await supabase.from('team_listings').select('id').eq('creator_id', profile.id);
+    
+    const teamIds = (myTeams || []).map(t => t.id);
+    const listingIds = (myListings || []).map(l => l.id);
 
-    if (myTeams && myTeams.length > 0) {
-      const teamIds = myTeams.map(t => t.id);
-      const { data: incomingReqs } = await supabase
+    if (teamIds.length > 0 || listingIds.length > 0) {
+      let query = supabase
         .from('join_requests')
         .select(`
           *,
-          teams:teams!team_id(
-            team_name,
-            event_id,
-            events:events!event_id(title)
-          ),
+          teams:teams!team_id(team_name, event_id, events:events!event_id(title)),
+          team_listings:team_listings!listing_id(team_name, hackathon_name),
           profiles:profiles!applicant_id(full_name, skills, branch, email, github_url, linkedin_url, resume_url)
         `)
-        .in('team_id', teamIds)
         .eq('status', 'pending')
         .eq('source', 'application');
-      if (incomingReqs) setIncomingRequests(incomingReqs);
-    }
 
-    // Also fetch requests for listings
-    const { data: myListings } = await supabase.from('team_listings').select('id').eq('creator_id', profile.id);
-    if (myListings && myListings.length > 0) {
-        const listingIds = myListings.map(l => l.id);
-        const { data: listingReqs } = await supabase
-            .from('join_requests')
-            .select('*, team_listings(team_name, hackathon_name), profiles!applicant_id(full_name, skills, branch, email, github_url, linkedin_url, resume_url)')
-            .in('listing_id', listingIds)
-            .eq('status', 'pending');
-        if (listingReqs) {
-            setIncomingRequests(prev => [...prev, ...listingReqs]);
-        }
+      if (teamIds.length > 0 && listingIds.length > 0) {
+        query = query.or(`team_id.in.(${teamIds.join(',')}),listing_id.in.(${listingIds.join(',')})`);
+      } else if (teamIds.length > 0) {
+        query = query.in('team_id', teamIds);
+      } else {
+        query = query.in('listing_id', listingIds);
+      }
+
+      const { data: incoming } = await query.order('created_at', { ascending: false });
+      if (incoming) setIncomingRequests(incoming);
+      else setIncomingRequests([]);
+    } else {
+      setIncomingRequests([]);
     }
 
 
@@ -551,7 +546,7 @@ function StudentDashboard({ session, profile }) {
 
   const handleRequestJoin = async (teamId) => {
     const { error } = await supabase.from('join_requests').insert([
-      { team_id: teamId, applicant_id: profile.id }
+      { team_id: teamId, applicant_id: profile.id, source: 'application' }
     ]);
     if (error) {
       if (error.code === '23505') alert("You have already requested to join this team.");
