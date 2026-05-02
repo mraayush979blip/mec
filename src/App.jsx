@@ -115,17 +115,6 @@ function App() {
       }
     });
 
-    // Register Service Worker for PWA & Notifications
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').then(registration => {
-          console.log('SW registered: ', registration);
-        }).catch(registrationError => {
-          console.log('SW registration failed: ', registrationError);
-        });
-      });
-    }
-
     // Realtime Notifications for new events/listings
     const channel = supabase
       .channel('schema-db-changes')

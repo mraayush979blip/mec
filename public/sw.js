@@ -1,3 +1,6 @@
+// Import OneSignal SDK
+importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js');
+
 const CACHE_NAME = 'mechatronian-v1';
 
 // Install: skip waiting to activate immediately
