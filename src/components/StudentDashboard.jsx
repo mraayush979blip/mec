@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   LogOut, User, Calendar, PlusCircle, ArrowRight, Activity, 
   Users, Shield, CheckCircle, XCircle, Star, Search, 
-  MapPin, Link as LinkIcon, Briefcase, Globe, GitBranch, FileText, MessageCircle, Download, Smartphone
+  MapPin, Link as LinkIcon, Briefcase, Globe, GitBranch, FileText, MessageCircle, Download, Smartphone, Trash2
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -246,6 +246,20 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
       alert("System Error: " + err.message);
     } finally {
       setIsCreatingListing(false);
+    }
+  };
+
+  const handleDeleteListing = async (listingId) => {
+    if (!window.confirm("Are you sure you want to delete this recruitment post? This action cannot be undone.")) return;
+    
+    const { error } = await supabase.from('team_listings').delete().eq('id', listingId).eq('creator_id', profile.id);
+    
+    if (error) {
+      alert("Error deleting post: " + error.message);
+    } else {
+      alert("Post deleted successfully.");
+      fetchListings();
+      fetchEvents();
     }
   };
 
@@ -1248,19 +1262,36 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                            <Star size={18} fill="currentColor" /> {listing.hackathon_name}
                         </div>
                       </div>
-                      {(() => {
-                        const hasRequested = listing.join_requests?.find(r => r.applicant_id === profile.id);
-                        if (hasRequested) {
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        {listing.creator_id === profile.id && (
+                          <button 
+                            className="btn btn-secondary" 
+                            style={{ 
+                              padding: '0.8rem', 
+                              color: '#FF3B30', 
+                              background: 'rgba(255, 59, 48, 0.08)',
+                              border: '1px solid rgba(255, 59, 48, 0.1)'
+                            }} 
+                            onClick={() => handleDeleteListing(listing.id)}
+                            title="Delete Post"
+                          >
+                            <Trash2 size={20} />
+                          </button>
+                        )}
+                        {(() => {
+                          const hasRequested = listing.join_requests?.find(r => r.applicant_id === profile.id);
+                          if (hasRequested) {
+                            return (
+                              <span className={`badge ${hasRequested.status === 'approved' ? 'badge-green' : hasRequested.status === 'rejected' ? 'badge-red' : 'badge-blue'}`} style={{ padding: '1rem 2rem', display: 'flex', justifyContent: 'center', fontSize: '1rem' }}>
+                                 {hasRequested.status === 'approved' ? 'Accepted ✓' : hasRequested.status === 'rejected' ? 'Declined' : 'Request Pending...'}
+                              </span>
+                            );
+                          }
                           return (
-                            <span className={`badge ${hasRequested.status === 'approved' ? 'badge-green' : hasRequested.status === 'rejected' ? 'badge-red' : 'badge-blue'}`} style={{ padding: '1rem 2rem', display: 'flex', justifyContent: 'center', fontSize: '1rem' }}>
-                               {hasRequested.status === 'approved' ? 'Accepted ✓' : hasRequested.status === 'rejected' ? 'Declined' : 'Request Pending...'}
-                            </span>
+                            <button className="btn btn-primary" style={{ padding: '1rem 2rem' }} onClick={() => handleApplyToListing(listing.id)}>Apply Now</button>
                           );
-                        }
-                        return (
-                          <button className="btn btn-primary" style={{ padding: '1rem 2rem' }} onClick={() => handleApplyToListing(listing.id)}>Apply Now</button>
-                        );
-                      })()}
+                        })()}
+                      </div>
                     </div>
                     
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
