@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   LogOut, User, Calendar, PlusCircle, ArrowRight, Activity, 
   Users, Shield, CheckCircle, XCircle, Star, Search, 
-  MapPin, Link as LinkIcon, Briefcase, Globe, GitBranch, FileText
+  MapPin, Link as LinkIcon, Briefcase, Globe, GitBranch, FileText, MessageCircle
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -1644,18 +1644,19 @@ function StudentDashboard({ session, profile }) {
               {!viewProfileData ? (
                 <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Fetching profile...</div>
               ) : (
-                <div style={{ padding: '1rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-                    <div style={{ width: '80px', height: '80px', borderRadius: '24px', background: 'var(--gradient-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: '2.5rem', boxShadow: 'var(--shadow-sm)' }}>
+                <div style={{ padding: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+                    <div style={{ width: '64px', height: '64px', borderRadius: '20px', background: 'var(--gradient-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: '2rem', boxShadow: 'var(--shadow-sm)', flexShrink: 0 }}>
                       {viewProfileData.full_name?.charAt(0) || '?'}
                     </div>
-                    <div>
-                      <h2 style={{ fontSize: '1.8rem', fontWeight: 800 }}>{viewProfileData.full_name}</h2>
-                      <p style={{ color: 'var(--accent)', fontWeight: 700, fontSize: '1.1rem' }}>{viewProfileData.dev_role || 'Developer'}</p>
-                      <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.8rem', flexWrap: 'wrap' }}>
-                        {viewProfileData.github_url && <a href={viewProfileData.github_url} target="_blank" rel="noreferrer" className="badge badge-purple" style={{ textDecoration: 'none', padding: '0.5rem 1rem' }}><GitBranch size={14} style={{marginRight: '6px', display: 'inline-block', verticalAlign: 'middle'}}/> GitHub</a>}
-                        {viewProfileData.linkedin_url && <a href={viewProfileData.linkedin_url} target="_blank" rel="noreferrer" className="badge badge-blue" style={{ textDecoration: 'none', padding: '0.5rem 1rem' }}><Globe size={14} style={{marginRight: '6px', display: 'inline-block', verticalAlign: 'middle'}}/> LinkedIn</a>}
-                        {viewProfileData.resume_url && <a href={viewProfileData.resume_url} target="_blank" rel="noreferrer" className="badge badge-green" style={{ textDecoration: 'none', padding: '0.5rem 1rem' }}><FileText size={14} style={{marginRight: '6px', display: 'inline-block', verticalAlign: 'middle'}}/> Resume</a>}
+                    <div style={{ flex: 1, minWidth: '200px' }}>
+                      <h2 style={{ fontSize: 'clamp(1.4rem, 5vw, 1.8rem)', fontWeight: 800, lineHeight: 1.2, marginBottom: '0.2rem' }}>{viewProfileData.full_name}</h2>
+                      <p style={{ color: 'var(--accent)', fontWeight: 700, fontSize: 'clamp(0.9rem, 3vw, 1.1rem)' }}>{viewProfileData.dev_role || 'Developer'}</p>
+                      <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.8rem', flexWrap: 'wrap' }}>
+                        {viewProfileData.github_url && <a href={viewProfileData.github_url} target="_blank" rel="noreferrer" className="badge badge-purple" style={{ textDecoration: 'none', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}><GitBranch size={12} style={{marginRight: '4px', display: 'inline-block', verticalAlign: 'middle'}}/> GitHub</a>}
+                        {viewProfileData.linkedin_url && <a href={viewProfileData.linkedin_url} target="_blank" rel="noreferrer" className="badge badge-blue" style={{ textDecoration: 'none', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}><Globe size={12} style={{marginRight: '4px', display: 'inline-block', verticalAlign: 'middle'}}/> LinkedIn</a>}
+                        {viewProfileData.resume_url && <a href={viewProfileData.resume_url} target="_blank" rel="noreferrer" className="badge badge-green" style={{ textDecoration: 'none', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}><FileText size={12} style={{marginRight: '4px', display: 'inline-block', verticalAlign: 'middle'}}/> Resume</a>}
+                        {viewProfileData.whatsapp_no && <a href={`https://wa.me/${viewProfileData.whatsapp_no.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="badge badge-green" style={{ textDecoration: 'none', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}><MessageCircle size={12} style={{marginRight: '4px', display: 'inline-block', verticalAlign: 'middle'}}/> WhatsApp</a>}
                       </div>
                     </div>
                   </div>
