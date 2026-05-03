@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   LogOut, User, Calendar, PlusCircle, ArrowRight, Activity, 
   Users, Shield, CheckCircle, XCircle, Star, Search, 
-  MapPin, Link as LinkIcon, Briefcase, Globe, GitBranch, FileText, MessageCircle, Download, Smartphone, Trash2
+  MapPin, Link as LinkIcon, Briefcase, Globe, GitBranch, FileText, MessageCircle, Download, Smartphone, Trash2, Info
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -10,6 +10,39 @@ import { supabase } from '../lib/supabase';
 const Skeleton = ({ width, height, borderRadius = '12px', margin = '0' }) => (
   <div className="skeleton" style={{ width, height, borderRadius, margin }} />
 );
+
+const HelpTooltip = ({ text }) => {
+  const showHelp = () => {
+    alert(text);
+  };
+
+  return (
+    <button 
+      onClick={showHelp}
+      style={{
+        background: 'rgba(0,122,255,0.1)',
+        color: 'var(--accent)',
+        border: 'none',
+        borderRadius: '50%',
+        width: '20px',
+        height: '20px',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'help',
+        marginLeft: '8px',
+        fontSize: '12px',
+        fontWeight: 'bold',
+        verticalAlign: 'middle',
+        transition: 'all 0.2s'
+      }}
+      title="Click for help"
+      type="button"
+    >
+      <Info size={12} />
+    </button>
+  );
+};
 
 function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   const navigate = useNavigate();
@@ -1156,7 +1189,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
         {activeTab === 'discovery' && (
           <div className="fade-in-up">
             <h1 className="dashboard-title">Team Discovery</h1>
-            <p className="subtitle">Top hackathons and opportunities from the web.</p>
+            <p className="subtitle">Top hackathons and opportunities from the web. <HelpTooltip text="Browse global hackathons from around the world. You can 'Star' them to save for later." /></p>
 
             <div className="glass-panel" style={{ padding: '1rem', marginBottom: '2.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
               <Search size={20} color="var(--text-secondary)" />
@@ -1220,7 +1253,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem', flexWrap: 'wrap', gap: '1rem' }}>
               <div style={{ flex: 1, minWidth: '200px' }}>
                 <h1 className="dashboard-title">My Recruitment Posts</h1>
-                <p className="subtitle">Manage project listings and find talent.</p>
+                <p className="subtitle">Manage project listings and find talent. <HelpTooltip text="Create a post to find teammates for your project. Other students can see these posts and request to join you." /></p>
               </div>
               <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
                 <button className="btn btn-secondary" style={{ padding: '0.6rem 1rem', fontSize: '0.85rem' }} onClick={fetchListings}>
@@ -1458,15 +1491,15 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                    <Shield size={36} />
                 </div>
                 <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1rem' }}>I'm a Team Lead</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: '1.6' }}>Create a team, define your project, and recruit specific roles from our student database.</p>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: '1.6' }}>Create a team, define your project, and recruit specific roles from our student database. <HelpTooltip text="Choose this if you have a project idea and want to build your own team from scratch." /></p>
                 <button className="btn btn-primary" style={{ marginTop: '2rem', width: '100%' }}>Create My Team</button>
               </div>
               <div className="glass-panel" style={{ padding: '3rem 2rem', textAlign: 'center', cursor: 'pointer' }} onClick={loadExistingTeams}>
                 <div style={{ width: '80px', height: '80px', borderRadius: '24px', background: 'rgba(52, 199, 89, 0.1)', color: '#34C759', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem' }}>
                    <Users size={36} />
                 </div>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1rem' }}>I'm Looking to Join</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: '1.6' }}>Browse active teams created by other students and request to join their mission.</p>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1rem' }}>I'm looking for a Team</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: '1.6' }}>Browse existing teams looking for members and request to join the one that fits your skills. <HelpTooltip text="Choose this if you don't have a team yet and want to join someone else's project." /></p>
                 <button className="btn btn-secondary" style={{ marginTop: '2rem', width: '100%' }}>Browse Teams</button>
               </div>
             </div>
@@ -1546,8 +1579,8 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
              <button className="btn btn-secondary" style={{ marginBottom: '2rem' }} onClick={() => setTeamAction(null)}>
               ← Change Role
             </button>
-            <h1 className="dashboard-title">Active Missions</h1>
-            <p className="subtitle">Browse teams looking for members for {selectedEvent.title}.</p>
+            <h1 className="dashboard-title">Official Events</h1>
+            <p className="subtitle">Join teams and participate in upcoming mechatronics events. <HelpTooltip text="These are official events organized by the department. You can either create your own team or join an existing one here." /></p>
 
             <div style={{ display: 'grid', gap: '1.5rem' }}>
               {existingTeams.length === 0 ? (
@@ -1683,8 +1716,8 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
           <div className="fade-in-up">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3rem', flexWrap: 'wrap', gap: '1rem' }}>
               <div style={{ flex: 1, minWidth: '200px' }}>
-                <h1 className="dashboard-title">Platform Activity</h1>
-                <p className="subtitle">Manage your connections and collaboration requests.</p>
+                <h1 className="dashboard-title">Student Activity</h1>
+                <p className="subtitle">Track your requests, team invites, and overall platform engagement. <HelpTooltip text="Check your pending requests to join teams, or see if someone has invited you to their project here." /></p>
               </div>
               <button className="btn btn-secondary" style={{ padding: '0.6rem 1rem', fontSize: '0.85rem' }} onClick={fetchActivity}>
                  Sync Data <Activity size={16} />
@@ -1985,8 +2018,8 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
         {/* PROFILE TAB */}
         {activeTab === 'profile' && (
           <div className="fade-in-up">
-            <h1 className="title">My Profile</h1>
-            <p className="subtitle">Manage your professional identity and public bio.</p>
+            <h1 className="dashboard-title">Professional Profile</h1>
+            <p className="subtitle">Showcase your skills and experience to find the perfect team. <HelpTooltip text="Fill out your skills and contact info so team leads can find you and invite you to their projects." /></p>
             
             <div className="glass-panel" style={{ padding: '3rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', marginBottom: '3rem', flexWrap: 'wrap' }}>

@@ -746,6 +746,22 @@ body {
   text-align: center;
 }
 
+.desktop-only {
+  display: block;
+}
+.mobile-only {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none;
+  }
+  .mobile-only {
+    display: block;
+  }
+}
+
 .stat-card h2 {
   font-size: 2.5rem;
   font-weight: 800;

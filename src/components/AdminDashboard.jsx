@@ -171,6 +171,30 @@ function AdminDashboard({ session, profile }) {
     await fetchUserLogs(user.id);
   };
 
+  const humanizeLog = (log) => {
+    const { action, details, profiles } = log;
+    const name = profiles?.full_name || 'System';
+    
+    switch (action) {
+      case 'sent_request':
+        return `${name} requested to join team "${details.team_name || 'Unknown'}"`;
+      case 'joined_team':
+        return `${name} successfully joined team "${details.team_name || 'Unknown'}"`;
+      case 'created_team':
+        return `${name} created a new team named "${details.team_name || 'Unknown'}"`;
+      case 'created_listing':
+        return `${name} published a new recruitment post for "${details.team_name || 'Unknown'}"`;
+      case 'updated_profile':
+        return `${name} updated their professional profile`;
+      case 'applied_to_listing':
+        return `${name} applied to a recruitment post for "${details.team_name || 'Unknown'}"`;
+      case 'status_update':
+        return `${name}'s request for "${details.team_name || 'Unknown'}" was ${details.status || 'updated'}`;
+      default:
+        return `${name} performed ${action.replace(/_/g, ' ')}`;
+    }
+  };
+
   const ensureAbsoluteUrl = (url) => {
     if (!url) return '#';
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
@@ -666,73 +690,107 @@ function AdminDashboard({ session, profile }) {
                  {[1,2,3,4,5].map(i => <Skeleton key={i} width="100%" height="80px" borderRadius="18px" />)}
               </div>
             ) : (
-              <div className="glass-panel" style={{ padding: '0', overflow: 'hidden' }}>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                    <thead style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--glass-border)' }}>
-                      <tr>
-                        <th style={{ padding: '1.2rem 1.5rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Student</th>
-                        <th style={{ padding: '1.2rem 1.5rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Branch</th>
-                        <th style={{ padding: '1.2rem 1.5rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Contact</th>
-                        <th style={{ padding: '1.2rem 1.5rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Status</th>
-                        <th style={{ padding: '1.2rem 1.5rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {allUsers
-                        .filter(u => 
-                          u.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          u.branch?.toLowerCase().includes(searchQuery.toLowerCase())
-                        )
-                        .map((user) => (
-                        <tr key={user.id} style={{ borderBottom: '1px solid var(--glass-border)', transition: 'background 0.2s' }} className="user-row-hover">
-                          <td style={{ padding: '1.2rem 1.5rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                              <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, overflow: 'hidden' }}>
-                                {user.avatar_url ? <img src={user.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : user.full_name?.charAt(0)}
-                              </div>
-                              <div>
-                                <p style={{ fontWeight: 700, fontSize: '0.95rem' }}>{user.full_name}</p>
-                                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{user.dev_role || 'No Role Set'}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td style={{ padding: '1.2rem 1.5rem', fontSize: '0.9rem', fontWeight: 600 }}>{user.branch || 'N/A'}</td>
-                          <td style={{ padding: '1.2rem 1.5rem', fontSize: '0.9rem' }}>{user.whatsapp_no || 'N/A'}</td>
-                          <td style={{ padding: '1.2rem 1.5rem' }}>
-                            <span className={`badge ${user.is_blocked ? 'badge-red' : 'badge-green'}`} style={{ fontSize: '0.7rem' }}>
-                              {user.is_blocked ? 'Blocked' : 'Active'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '1.2rem 1.5rem' }}>
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                              <button 
-                                className="btn btn-secondary" 
-                                style={{ padding: '0.5rem 0.8rem', fontSize: '0.75rem' }}
-                                onClick={() => handleViewUserDetail(user)}
-                              >
-                                Details
-                              </button>
-                              <button 
-                                className="btn" 
-                                style={{ 
-                                  background: user.is_blocked ? 'rgba(52, 199, 89, 0.1)' : 'rgba(255, 59, 48, 0.1)', 
-                                  color: user.is_blocked ? '#34C759' : '#FF3B30',
-                                  padding: '0.5rem 1rem',
-                                  fontSize: '0.8rem',
-                                  borderRadius: '10px',
-                                  fontWeight: 700
-                                }}
-                                onClick={() => handleToggleBlock(user.id, user.is_blocked)}
-                              >
-                                {user.is_blocked ? 'Unblock' : 'Block'}
-                              </button>
-                            </div>
-                          </td>
+              <div>
+                {/* Desktop View Table */}
+                <div className="glass-panel desktop-only" style={{ padding: '0', overflow: 'hidden', marginBottom: '2rem' }}>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                      <thead style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--glass-border)' }}>
+                        <tr>
+                          <th style={{ padding: '1.2rem 1.5rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Student</th>
+                          <th style={{ padding: '1.2rem 1.5rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Branch</th>
+                          <th style={{ padding: '1.2rem 1.5rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Status</th>
+                          <th style={{ padding: '1.2rem 1.5rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Action</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {allUsers
+                          .filter(u => 
+                            u.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            u.branch?.toLowerCase().includes(searchQuery.toLowerCase())
+                          )
+                          .map((user) => (
+                          <tr key={user.id} style={{ borderBottom: '1px solid var(--glass-border)', transition: 'background 0.2s' }} className="user-row-hover">
+                            <td style={{ padding: '1.2rem 1.5rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, overflow: 'hidden' }}>
+                                  {user.avatar_url ? <img src={user.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : user.full_name?.charAt(0)}
+                                </div>
+                                <div>
+                                  <p style={{ fontWeight: 700, fontSize: '0.95rem' }}>{user.full_name}</p>
+                                  <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{user.email}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td style={{ padding: '1.2rem 1.5rem', fontSize: '0.9rem', fontWeight: 600 }}>{user.branch || 'N/A'}</td>
+                            <td style={{ padding: '1.2rem 1.5rem' }}>
+                              <span className={`badge ${user.is_blocked ? 'badge-red' : 'badge-green'}`} style={{ fontSize: '0.7rem' }}>
+                                {user.is_blocked ? 'Blocked' : 'Active'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '1.2rem 1.5rem' }}>
+                              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <button className="btn btn-secondary" style={{ padding: '0.5rem 0.8rem', fontSize: '0.75rem' }} onClick={() => handleViewUserDetail(user)}>Details</button>
+                                <button 
+                                  className="btn" 
+                                  style={{ 
+                                    background: user.is_blocked ? 'rgba(52, 199, 89, 0.1)' : 'rgba(255, 59, 48, 0.1)', 
+                                    color: user.is_blocked ? '#34C759' : '#FF3B30',
+                                    padding: '0.5rem 1rem',
+                                    fontSize: '0.8rem',
+                                    borderRadius: '10px',
+                                    fontWeight: 700
+                                  }}
+                                  onClick={() => handleToggleBlock(user.id, user.is_blocked)}
+                                >
+                                  {user.is_blocked ? 'Unblock' : 'Block'}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Mobile View Cards */}
+                <div className="mobile-only" style={{ display: 'grid', gap: '1rem', marginBottom: '2rem' }}>
+                   {allUsers
+                    .filter(u => 
+                      u.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                      u.branch?.toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                    .map((user) => (
+                      <div key={user.id} className="glass-panel" style={{ padding: '1.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.2rem' }}>
+                           <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.2rem' }}>
+                              {user.full_name?.charAt(0)}
+                           </div>
+                           <div>
+                              <p style={{ fontWeight: 800, fontSize: '1.1rem' }}>{user.full_name}</p>
+                              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{user.branch || 'No Branch'}</p>
+                           </div>
+                           <span className={`badge ${user.is_blocked ? 'badge-red' : 'badge-green'}`} style={{ marginLeft: 'auto', fontSize: '0.65rem' }}>
+                              {user.is_blocked ? 'Blocked' : 'Active'}
+                           </span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
+                           <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => handleViewUserDetail(user)}>View Details</button>
+                           <button 
+                             className="btn" 
+                             style={{ 
+                               width: '100%',
+                               background: user.is_blocked ? 'rgba(52, 199, 89, 0.1)' : 'rgba(255, 59, 48, 0.1)', 
+                               color: user.is_blocked ? '#34C759' : '#FF3B30'
+                             }} 
+                             onClick={() => handleToggleBlock(user.id, user.is_blocked)}
+                           >
+                              {user.is_blocked ? 'Unblock' : 'Block'}
+                           </button>
+                        </div>
+                      </div>
+                    ))}
                 </div>
               </div>
             )}
@@ -799,16 +857,11 @@ function AdminDashboard({ session, profile }) {
                     </div>
                     <div style={{ flex: 1 }}>
                       <p style={{ fontSize: '1rem', fontWeight: 700 }}>
-                        <span style={{ color: 'var(--accent)' }}>{log.profiles?.full_name || 'System'}</span> {log.action.replace(/_/g, ' ')}
+                        {humanizeLog(log)}
                       </p>
                       <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                         {new Date(log.created_at).toLocaleString()} • {log.profiles?.email || 'N/A'}
                       </p>
-                      {log.details && Object.keys(log.details).length > 0 && (
-                        <div style={{ marginTop: '0.5rem', background: 'rgba(0,0,0,0.02)', padding: '0.5rem', borderRadius: '8px', fontSize: '0.75rem', fontFamily: 'monospace' }}>
-                          {JSON.stringify(log.details)}
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))}
