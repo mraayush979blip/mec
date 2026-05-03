@@ -98,6 +98,15 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
     }
   };
 
+  const logActivity = async (action, details = {}) => {
+    if (!profile?.id) return;
+    await supabase.from('activity_logs').insert([{
+      user_id: profile.id,
+      action,
+      details
+    }]);
+  };
+
   const tabs = ['events', 'discovery', 'find_member', 'activity', 'teams', 'profile'];
 
 
@@ -265,13 +274,20 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   };
 
   const handleApplyToListing = async (listingId) => {
+    const role = window.prompt("Which role are you applying for? (e.g. Frontend, Designer, etc.)");
+    if (!role) {
+      alert("Role is required to apply.");
+      return;
+    }
+
     const { error } = await supabase.from('join_requests').insert([
-      { listing_id: listingId, applicant_id: profile.id, source: 'application' }
+      { listing_id: listingId, applicant_id: profile.id, source: 'application', role_applied: role }
     ]);
     if (error) {
       if (error.code === '23505') alert("You have already applied to this team.");
       else alert(error.message);
     } else {
+      await logActivity('sent_request_listing', { listing_id: listingId, role });
       alert("Application sent! The team lead will be notified.");
       fetchEvents();
       if (activeTab === 'discovery') fetchListings();
@@ -712,13 +728,20 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   };
 
   const handleRequestJoin = async (teamId) => {
+    const role = window.prompt("Which role are you applying for? (e.g. Frontend, Backend, Presenter, etc.)");
+    if (!role) {
+      alert("Role is required to join a team.");
+      return;
+    }
+
     const { error } = await supabase.from('join_requests').insert([
-      { team_id: teamId, applicant_id: profile.id, source: 'application' }
+      { team_id: teamId, applicant_id: profile.id, source: 'application', role_applied: role }
     ]);
     if (error) {
       if (error.code === '23505') alert("You have already requested to join this team.");
       else alert(error.message);
     } else {
+      await logActivity('sent_request_team', { team_id: teamId, role });
       alert("Request sent successfully!");
       loadExistingTeams();
     }
@@ -1689,6 +1712,9 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                         <div style={{ flex: 1, minWidth: '200px' }}>
                           <p style={{ fontWeight: 800, fontSize: '1.1rem' }}>{req.teams?.team_name || req.team_listings?.team_name}</p>
                           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{req.teams?.events?.title || req.team_listings?.hackathon_name}</p>
+                          {req.role_applied && (
+                            <p style={{ fontSize: '0.8rem', color: 'var(--accent)', fontWeight: 700, marginTop: '0.2rem' }}>Role: {req.role_applied}</p>
+                          )}
                           {req.status === 'approved' && (
                              <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                 <span className="badge badge-green" style={{ fontSize: '0.65rem' }}>Contact Lead: {req.teams?.profiles?.whatsapp_no || req.team_listings?.profiles?.whatsapp_no || 'Check Profile'}</span>
@@ -1741,6 +1767,9 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                                         : `Applying for: ${req.teams?.team_name || req.team_listings?.team_name}`
                                       }
                                     </p>
+                                    {req.role_applied && (
+                                      <p style={{ fontSize: '0.8rem', color: 'var(--accent)', fontWeight: 700 }}>Requested Role: {req.role_applied}</p>
+                                    )}
                                 </div>
                             </div>
                             {/* Show action buttons only for pending applications */}

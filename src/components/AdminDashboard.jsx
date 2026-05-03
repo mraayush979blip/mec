@@ -26,9 +26,12 @@ function AdminDashboard({ session, profile }) {
     }
   };
 
-  const tabs = ['overview', 'events', 'users', 'discovery', 'create'];
+  const tabs = ['overview', 'events', 'users', 'logs', 'discovery', 'create'];
   const [allUsers, setAllUsers] = useState([]);
+  const [logs, setLogs] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewingUser, setViewingUser] = useState(null);
+  const [userLogs, setUserLogs] = useState([]);
 
   const handleTabChange = (tab) => {
     navigate(`/admin/${tab}`);
@@ -95,6 +98,8 @@ function AdminDashboard({ session, profile }) {
        await fetchExternalHackathons();
     } else if (activeTab === 'users') {
        await fetchUsers();
+    } else if (activeTab === 'logs') {
+       await fetchLogs();
     }
   };
 
@@ -132,6 +137,38 @@ function AdminDashboard({ session, profile }) {
     const { data } = await supabase.from('external_hackathons').select('*').order('created_at', { ascending: false });
     if (data) setExternalHackathons(data);
     setLoading(false);
+  };
+
+  const fetchLogs = async (userId = null) => {
+    setLoading(true);
+    let query = supabase
+      .from('activity_logs')
+      .select('*, profiles(full_name, email)')
+      .order('created_at', { ascending: false });
+    
+    if (userId) {
+      query = query.eq('user_id', userId);
+    } else {
+      query = query.limit(100);
+    }
+
+    const { data } = await query;
+    if (data) setLogs(data);
+    setLoading(false);
+  };
+
+  const fetchUserLogs = async (userId) => {
+    const { data } = await supabase
+      .from('activity_logs')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (data) setUserLogs(data);
+  };
+
+  const handleViewUserDetail = async (user) => {
+    setViewingUser(user);
+    await fetchUserLogs(user.id);
   };
 
   const ensureAbsoluteUrl = (url) => {
@@ -362,6 +399,10 @@ function AdminDashboard({ session, profile }) {
         <div className={`mobile-nav-item ${activeTab === 'users' ? 'active' : ''}`} onClick={() => handleTabChange('users')}>
           <Users size={20} />
           <span>Users</span>
+        </div>
+        <div className={`mobile-nav-item ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => handleTabChange('logs')}>
+          <Activity size={20} />
+          <span>Logs</span>
         </div>
         <div className={`mobile-nav-item ${activeTab === 'create' ? 'active' : ''}`} onClick={() => handleTabChange('create')}>
           <PlusCircle size={20} />
@@ -608,26 +649,113 @@ function AdminDashboard({ session, profile }) {
                             </span>
                           </td>
                           <td style={{ padding: '1.2rem 1.5rem' }}>
-                            <button 
-                              className="btn" 
-                              style={{ 
-                                background: user.is_blocked ? 'rgba(52, 199, 89, 0.1)' : 'rgba(255, 59, 48, 0.1)', 
-                                color: user.is_blocked ? '#34C759' : '#FF3B30',
-                                padding: '0.5rem 1rem',
-                                fontSize: '0.8rem',
-                                borderRadius: '10px',
-                                fontWeight: 700
-                              }}
-                              onClick={() => handleToggleBlock(user.id, user.is_blocked)}
-                            >
-                              {user.is_blocked ? 'Unblock' : 'Block Access'}
-                            </button>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button 
+                                className="btn btn-secondary" 
+                                style={{ padding: '0.5rem 0.8rem', fontSize: '0.75rem' }}
+                                onClick={() => handleViewUserDetail(user)}
+                              >
+                                Details
+                              </button>
+                              <button 
+                                className="btn" 
+                                style={{ 
+                                  background: user.is_blocked ? 'rgba(52, 199, 89, 0.1)' : 'rgba(255, 59, 48, 0.1)', 
+                                  color: user.is_blocked ? '#34C759' : '#FF3B30',
+                                  padding: '0.5rem 1rem',
+                                  fontSize: '0.8rem',
+                                  borderRadius: '10px',
+                                  fontWeight: 700
+                                }}
+                                onClick={() => handleToggleBlock(user.id, user.is_blocked)}
+                              >
+                                {user.is_blocked ? 'Unblock' : 'Block'}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+
+            {viewingUser && (
+              <div className="glass-panel fade-in-up" style={{ marginTop: '2rem', padding: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                  <h2 style={{ fontSize: '1.8rem', fontWeight: 800 }}>Student Profile: {viewingUser.full_name}</h2>
+                  <button className="btn btn-secondary" onClick={() => setViewingUser(null)}>Close Profile</button>
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--accent)' }}>Basic Info</h3>
+                    <p><strong>Email:</strong> {viewingUser.email}</p>
+                    <p><strong>Branch:</strong> {viewingUser.branch || 'N/A'}</p>
+                    <p><strong>Contact:</strong> {viewingUser.whatsapp_no || 'N/A'}</p>
+                    <p><strong>Skills:</strong> {viewingUser.skills?.join(', ') || 'None listed'}</p>
+                    <p><strong>Dev Role:</strong> {viewingUser.dev_role || 'N/A'}</p>
+                    <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem' }}>
+                       {viewingUser.github_url && <a href={viewingUser.github_url} target="_blank" className="btn btn-secondary">GitHub</a>}
+                       {viewingUser.linkedin_url && <a href={viewingUser.linkedin_url} target="_blank" className="btn btn-secondary">LinkedIn</a>}
+                       {viewingUser.resume_url && <a href={viewingUser.resume_url} target="_blank" className="btn btn-primary">Resume</a>}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--accent)' }}>Recent Activity Log</h3>
+                    <div style={{ maxHeight: '400px', overflowY: 'auto', display: 'grid', gap: '0.5rem' }}>
+                      {userLogs.length === 0 ? (
+                        <p style={{ color: 'var(--text-secondary)' }}>No activity recorded for this student.</p>
+                      ) : userLogs.map(log => (
+                        <div key={log.id} style={{ background: 'rgba(0,0,0,0.02)', padding: '0.8rem', borderRadius: '12px', fontSize: '0.85rem' }}>
+                          <p style={{ fontWeight: 700 }}>{log.action.replace(/_/g, ' ')}</p>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{new Date(log.created_at).toLocaleString()}</p>
+                          {log.details && <p style={{ fontSize: '0.7rem', color: 'var(--accent)', marginTop: '0.2rem' }}>{JSON.stringify(log.details)}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'logs' && (
+          <div className="fade-in-up">
+            <h1 className="title" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>System Audit Logs</h1>
+            <p className="subtitle">Real-time activity stream across the entire platform.</p>
+
+            {loading ? (
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                 {[1,2,3,4,5].map(i => <div key={i} className="skeleton" style={{ width: '100%', height: '80px', borderRadius: '18px' }} />)}
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                {logs.length === 0 ? (
+                  <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No logs found.</div>
+                ) : logs.map(log => (
+                  <div key={log.id} className="glass-panel" style={{ padding: '1.2rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Activity size={20} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontSize: '1rem', fontWeight: 700 }}>
+                        <span style={{ color: 'var(--accent)' }}>{log.profiles?.full_name || 'System'}</span> {log.action.replace(/_/g, ' ')}
+                      </p>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        {new Date(log.created_at).toLocaleString()} • {log.profiles?.email || 'N/A'}
+                      </p>
+                      {log.details && Object.keys(log.details).length > 0 && (
+                        <div style={{ marginTop: '0.5rem', background: 'rgba(0,0,0,0.02)', padding: '0.5rem', borderRadius: '8px', fontSize: '0.75rem', fontFamily: 'monospace' }}>
+                          {JSON.stringify(log.details)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
