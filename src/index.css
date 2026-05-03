@@ -58,6 +58,7 @@ h1, h2, h3, h4, .dashboard-title {
   background: linear-gradient(to right, #007AFF, #00C7BE, #AF52DE, #007AFF);
   background-size: 300% auto;
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: shine 5s linear infinite;
   display: inline-block;
