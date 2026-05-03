@@ -6,7 +6,7 @@ self.addEventListener('message', (event) => {
   // OneSignal's SDK will also add its own listener via importScripts
 });
 
-const CACHE_NAME = 'mechatronian-v5';
+const CACHE_NAME = 'mechatronian-v6';
 
 // Install: skip waiting to activate immediately
 self.addEventListener('install', event => {
