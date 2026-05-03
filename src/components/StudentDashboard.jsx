@@ -980,10 +980,12 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
           <div className="fade-in-up">
             <div style={{ marginBottom: '3rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                <span className="badge badge-blue">Welcome Back</span>
+                <span className="badge badge-blue subtitle-stylish" style={{ padding: '0.4rem 1.2rem' }}>WELCOME BACK</span>
               </div>
-              <h1 className="dashboard-title">Hi, <span className="stylish-name" style={{ color: 'var(--accent)', fontSize: '1.2em' }}>{profile?.full_name?.split(' ')[0] || 'Builder'}</span></h1>
-              <p className="subtitle">Ready to join your next dream team? Here's what's happening on campus.</p>
+              <h1 className="dashboard-title" style={{ fontSize: '2.5rem', lineHeight: '1.2' }}>
+                Hi, <span className="stylish-name">{profile?.full_name?.split(' ')[0] || 'Builder'}</span>
+              </h1>
+              <p className="subtitle" style={{ fontSize: '1.1rem', marginTop: '0.5rem' }}>Ready to join your next dream team? Here's what's happening on campus.</p>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginTop: '2rem' }}>
                 <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>

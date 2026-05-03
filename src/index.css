@@ -52,10 +52,31 @@ h1, h2, h3, h4, .dashboard-title {
 }
 
 .stylish-name {
-  font-family: var(--font-accent);
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  text-transform: capitalize;
+  font-family: 'Unbounded', cursive;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  background: linear-gradient(to right, #007AFF, #00C7BE, #AF52DE, #007AFF);
+  background-size: 300% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shine 5s linear infinite;
+  display: inline-block;
+  font-size: 1.1em;
+  text-transform: uppercase;
+}
+
+@keyframes shine {
+  to {
+    background-position: 300% center;
+  }
+}
+
+.subtitle-stylish {
+  font-family: 'Bebas Neue', cursive;
+  letter-spacing: 0.1em;
+  font-size: 1.2rem;
+  color: var(--accent);
+  opacity: 0.8;
 }
 
 /* Custom Scrollbar */
