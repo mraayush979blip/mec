@@ -38,16 +38,16 @@ const Logo = ({ size = 42, color = '#C0C0C0', stylized = true }) => {
           </linearGradient>
         </defs>
         <g stroke="url(#silverGradient)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M4 20V8" />
-          <path d="M4 8L12 16" />
-          <path d="M12 16L20 8" />
-          <path d="M20 8V20" />
+          {/* Continuous M path */}
+          <path d="M4 18V6L12 14L20 6V18" />
         </g>
         
         {/* Nodes */}
-        <circle cx="12" cy="16" r="1.2" fill="#FFFFFF" />
-        <circle cx="4" cy="8" r="1.2" fill="#FFFFFF" />
-        <circle cx="20" cy="8" r="1.2" fill="#FFFFFF" />
+        <circle cx="12" cy="14" r="1.2" fill="#FFFFFF" />
+        <circle cx="4" cy="6" r="1.2" fill="#FFFFFF" />
+        <circle cx="20" cy="6" r="1.2" fill="#FFFFFF" />
+        <circle cx="4" cy="18" r="1.2" fill="#FFFFFF" />
+        <circle cx="20" cy="18" r="1.2" fill="#FFFFFF" />
       </svg>
     </div>
   );
