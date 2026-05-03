@@ -1261,12 +1261,20 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                       </div>
                     )}
                     <div className="input-group">
+                      <label className="input-label">Required Expertise (Skills)</label>
+                      <input type="text" className="glass-input" placeholder="React, Node.js, Python, etc." value={requiredSkills} onChange={(e)=>setRequiredSkills(e.target.value)} />
+                    </div>
+                    <div className="input-group">
                       <label className="input-label">Roles Needed</label>
                       <input type="text" className="glass-input" placeholder="Frontend, UI Designer, etc." value={rolesNeeded} onChange={(e)=>setRolesNeeded(e.target.value)} required />
                     </div>
                     <div className="input-group">
                         <label className="input-label">Exp. Level</label>
                         <input type="text" className="glass-input" placeholder="Beginner, Pro, etc." value={minExperience} onChange={(e)=>setMinExperience(e.target.value)} />
+                    </div>
+                    <div className="input-group">
+                      <label className="input-label">Registration Link (Optional)</label>
+                      <input type="url" className="glass-input" placeholder="https://..." value={registrationLink} onChange={(e)=>setRegistrationLink(e.target.value)} />
                     </div>
                   </div>
                   <div className="input-group">
@@ -1356,13 +1364,21 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                       <div style={{ background: 'var(--accent-light)', padding: '1.2rem', borderRadius: '18px', border: '1px solid rgba(0,122,255,0.1)' }}>
                         <p style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Required Expertise</p>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                          {listing.required_skills?.map((s, i) => <span key={i} style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>{s}</span>)}
+                          {listing.required_skills?.length > 0 ? (
+                            listing.required_skills.map((s, i) => <span key={i} style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>{s}</span>)
+                          ) : (
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Any / Not specified</span>
+                          )}
                         </div>
                       </div>
                       <div style={{ background: 'rgba(175, 82, 222, 0.08)', padding: '1.2rem', borderRadius: '18px', border: '1px solid rgba(175, 82, 222, 0.1)' }}>
                         <p style={{ fontSize: '0.7rem', color: '#AF52DE', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Open Roles</p>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                          {listing.roles_needed?.map((r, i) => <span key={i} style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>{r}</span>)}
+                          {listing.roles_needed?.length > 0 ? (
+                            listing.roles_needed.map((r, i) => <span key={i} style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>{r}</span>)
+                          ) : (
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>None specified</span>
+                          )}
                         </div>
                       </div>
                     </div>
