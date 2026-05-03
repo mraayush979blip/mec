@@ -3,6 +3,7 @@ import { Sparkles, Users, Calendar, ArrowRight, Loader, Eye, EyeOff, Activity } 
 import { Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import ErrorBoundary from './components/ErrorBoundary';
+import Logo from './components/Logo';
 
 const StudentDashboard = lazy(() => import('./components/StudentDashboard'));
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
@@ -17,7 +18,10 @@ const AuthLayout = ({ children }) => (
     <header className="glass-header">
       <div className="container">
         <nav>
-          <div className="nav-brand">Mechatronian</div>
+          <div className="nav-brand" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+            <Logo size={32} color="var(--text-primary)" />
+            <span style={{ fontFamily: 'var(--font-brand)', fontSize: '1.2rem' }}>Mechatronian</span>
+          </div>
           <Link to="/" className="btn btn-secondary" style={{ padding: '0.4rem 1rem', fontSize: '0.85rem', textDecoration: 'none' }}>Home</Link>
         </nav>
       </div>
@@ -25,9 +29,7 @@ const AuthLayout = ({ children }) => (
     <main className="container h-screen-center" style={{ minHeight: 'calc(100vh - 70px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div className="glass-panel fade-in-up auth-box" style={{ padding: '3rem', maxWidth: '480px', width: '100%', textAlign: 'center', margin: 'auto' }}>
         <div className="fade-in-up delay-1" style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-          <div style={{ background: 'var(--accent)', color: 'white', padding: '1rem', borderRadius: '20px', boxShadow: '0 8px 24px rgba(0,113,227,0.3)' }}>
-            <Sparkles size={32} />
-          </div>
+          <Logo size={64} />
         </div>
         {children}
       </div>
@@ -404,7 +406,10 @@ function App() {
                     <header className="glass-header">
                       <div className="container">
                         <nav>
-                          <div className="nav-brand">Mechatronian</div>
+                          <div className="nav-brand" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <Logo size={36} color="var(--text-primary)" />
+                            <span style={{ fontFamily: 'var(--font-brand)', fontSize: '1.5rem' }}>Mechatronian</span>
+                          </div>
                           <Link to="/login" className="btn btn-primary" style={{ padding: '0.4rem 1.2rem', fontSize: '0.85rem', textDecoration: 'none' }}>Sign In</Link>
                         </nav>
                       </div>
