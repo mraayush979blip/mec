@@ -15,8 +15,8 @@ function AdminDashboard({ session, profile }) {
   const pathParts = location.pathname.split('/').filter(Boolean);
   const activeTab = pathParts[pathParts[0] === 'admin' ? 1 : 0] || 'overview';
 
-  const [stats, setStats] = useState({ students: 0, teams: 0, requests: 0, events: 0 });
-  const [events, setEvents] = useState([]);
+  const [stats, setStats] = useState({ students: 0, teams: 0, events: 0, requests: 0 });
+  const [recentRequests, setRecentRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingEvent, setEditingEvent] = useState(null);
 
@@ -214,11 +214,30 @@ function AdminDashboard({ session, profile }) {
   };
 
   const fetchStats = async () => {
-    const { count: students } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'student');
-    const { count: teams } = await supabase.from('teams').select('*', { count: 'exact', head: true });
-    const { count: requests } = await supabase.from('join_requests').select('*', { count: 'exact', head: true });
-    const { count: eventsCount } = await supabase.from('events').select('*', { count: 'exact', head: true });
-    setStats({ students, teams, requests, events: eventsCount });
+    const [{ count: students }, { count: teams }, { count: events }, { count: requests }] = await Promise.all([
+      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('teams').select('*', { count: 'exact', head: true }),
+      supabase.from('events').select('*', { count: 'exact', head: true }),
+      supabase.from('join_requests').select('*', { count: 'exact', head: true })
+    ]);
+    
+    setStats({ students, teams, events, requests });
+
+    // Fetch recent requests with human-readable details
+    const { data: recent } = await supabase
+      .from('join_requests')
+      .select(`
+        *,
+        applicant:profiles!join_requests_applicant_id_fkey(id, full_name, email),
+        teams(
+          team_name,
+          creator:profiles!teams_creator_id_fkey(id, full_name)
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    
+    if (recent) setRecentRequests(recent);
   };
 
   const fetchEvents = async () => {
@@ -441,6 +460,43 @@ function AdminDashboard({ session, profile }) {
                 <Activity size={32} color="#AF52DE" />
                 <h2>{stats.requests}</h2>
                 <p>Requests</p>
+              </div>
+            </div>
+
+            <div className="glass-panel fade-in-up" style={{ marginTop: '2.5rem', padding: '2.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                 <div>
+                   <h3 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Recent Activity Feed</h3>
+                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Human-friendly summary of latest join requests.</p>
+                 </div>
+                 <Activity size={24} color="var(--accent)" />
+              </div>
+
+              <div style={{ display: 'grid', gap: '1.2rem' }}>
+                {recentRequests.length === 0 ? (
+                  <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>No recent requests found.</p>
+                ) : recentRequests.map((req) => (
+                  <div key={req.id} className="request-card-minimal" style={{ background: 'rgba(0,0,0,0.01)', padding: '1.2rem', borderRadius: '18px', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
+                      {req.applicant?.full_name?.charAt(0) || '?'}
+                    </div>
+                    <div style={{ flex: 1, minWidth: '200px' }}>
+                      <p style={{ fontSize: '1rem', lineHeight: '1.5' }}>
+                        <strong style={{ color: 'var(--accent)', cursor: 'pointer' }} onClick={() => handleViewUserDetail(req.applicant)}>{req.applicant?.full_name || 'Someone'}</strong> 
+                        <span> requested to join </span>
+                        <strong style={{ color: 'var(--text-primary)' }}>{req.teams?.team_name || 'a team'}</strong>
+                        <span> created by </span>
+                        <strong style={{ color: 'var(--text-primary)', cursor: 'pointer' }} onClick={() => handleViewUserDetail(req.teams?.creator)}>{req.teams?.creator?.full_name || 'Unknown'}</strong>
+                      </p>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.3rem' }}>
+                        Applied for: <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{req.role_applied || 'Not specified'}</span> • {new Date(req.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <span className={`badge ${req.status === 'approved' ? 'badge-green' : req.status === 'rejected' ? 'badge-red' : 'badge-blue'}`} style={{ fontSize: '0.7rem' }}>
+                      {req.status}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

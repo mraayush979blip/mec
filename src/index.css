@@ -720,6 +720,23 @@ body {
   margin-top: 2rem;
 }
 
+@media (max-width: 600px) {
+  .admin-stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+  }
+  .stat-card {
+    padding: 1.2rem;
+  }
+  .stat-card h2 {
+    font-size: 1.5rem;
+  }
+  .request-card-minimal {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+}
+
 .stat-card {
   padding: 2rem;
   display: flex;
