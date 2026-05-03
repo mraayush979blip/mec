@@ -914,12 +914,14 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
       <header className="glass-header">
         <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 2rem' }}>
           <div className="nav-brand" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-            <div style={{ background: 'var(--gradient-blue)', color: 'white', padding: '0.5rem', borderRadius: '14px', boxShadow: '0 8px 16px rgba(0, 122, 255, 0.3)' }}>
-              <Users size={22} />
+            <div style={{ position: 'relative', width: '42px', height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ position: 'absolute', inset: 0, background: 'var(--gradient-blue)', borderRadius: '12px', transform: 'rotate(10deg)', opacity: 0.3 }}></div>
+              <div style={{ position: 'absolute', inset: 0, background: 'var(--gradient-blue)', borderRadius: '12px', transform: 'rotate(-5deg)' }}></div>
+              <Shield size={24} color="white" style={{ position: 'relative' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Mechatronian</span>
-              <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent)', letterSpacing: '0.1em' }}>Team Hub</span>
+              <span style={{ fontSize: '1.4rem', fontWeight: 400, fontFamily: '"Righteous", cursive', color: 'var(--text-primary)', letterSpacing: '0.02em', lineHeight: 1 }}>Mechatronian</span>
+              <span style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--accent)', letterSpacing: '0.15em', marginTop: '2px' }}>Hub Platform</span>
             </div>
           </div>
           
