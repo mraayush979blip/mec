@@ -982,7 +982,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                 <span className="badge badge-blue">Welcome Back</span>
               </div>
-              <h1 className="dashboard-title">Hi, {profile?.full_name?.split(' ')[0] || 'Builder'}</h1>
+              <h1 className="dashboard-title">Hi, <span className="stylish-name" style={{ color: 'var(--accent)', fontSize: '1.2em' }}>{profile?.full_name?.split(' ')[0] || 'Builder'}</span></h1>
               <p className="subtitle">Ready to join your next dream team? Here's what's happening on campus.</p>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginTop: '2rem' }}>
