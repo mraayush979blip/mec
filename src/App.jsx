@@ -495,7 +495,7 @@ function App() {
                             <input type="text" className="glass-input" placeholder="John Doe" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
                           </div>
                           <div className="input-group">
-                            <label className="input-label">College Email</label>
+                            <label className="input-label"> Email</label>
                             <input type="email" className="glass-input" placeholder="student@gmail.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
                           </div>
                           <div className="input-group">
