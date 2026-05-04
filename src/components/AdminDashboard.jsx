@@ -256,6 +256,10 @@ function AdminDashboard({ session, profile }) {
         teams(
           team_name,
           creator:profiles!teams_creator_id_fkey(id, full_name)
+        ),
+        team_listings(
+          team_name,
+          creator:profiles!team_listings_creator_id_fkey(id, full_name)
         )
       `)
       .order('created_at', { ascending: false })
@@ -508,9 +512,9 @@ function AdminDashboard({ session, profile }) {
                       <p style={{ fontSize: '1rem', lineHeight: '1.5' }}>
                         <strong style={{ color: 'var(--accent)', cursor: 'pointer' }} onClick={() => handleViewUserDetail(req.applicant)}>{req.applicant?.full_name || 'Someone'}</strong> 
                         <span> requested to join </span>
-                        <strong style={{ color: 'var(--text-primary)' }}>{req.teams?.team_name || 'a team'}</strong>
+                        <strong style={{ color: 'var(--text-primary)' }}>{req.teams?.team_name || req.team_listings?.team_name || 'a team'}</strong>
                         <span> created by </span>
-                        <strong style={{ color: 'var(--text-primary)', cursor: 'pointer' }} onClick={() => handleViewUserDetail(req.teams?.creator)}>{req.teams?.creator?.full_name || 'Unknown'}</strong>
+                        <strong style={{ color: 'var(--text-primary)', cursor: 'pointer' }} onClick={() => handleViewUserDetail(req.teams?.creator || req.team_listings?.creator)}>{req.teams?.creator?.full_name || req.team_listings?.creator?.full_name || 'Unknown'}</strong>
                       </p>
                       <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.3rem' }}>
                         Applied for: <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{req.role_applied || 'Not specified'}</span> • {new Date(req.created_at).toLocaleDateString()}
