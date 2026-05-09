@@ -23,6 +23,7 @@ export default async function handler(req, res) {
 
   try {
     let successCount = 0;
+    let lastError = null;
     
     for (const chunk of chunks) {
       const bccList = chunk.map(email => ({ email }));
@@ -37,8 +38,9 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           sender: { 
             name: 'Mechatronian Admin', 
-            email: process.env.VITE_BREVO_SENDER_EMAIL || 'admin@mechatronian.com' 
+            email: process.env.VITE_BREVO_SENDER_EMAIL || 'mraarusharma124@gmail.com' 
           },
+          to: [{ email: process.env.VITE_BREVO_SENDER_EMAIL || 'mraarusharma124@gmail.com', name: 'Mechatronian Admin' }],
           bcc: bccList,
           subject: subject,
           htmlContent: htmlContent
@@ -48,10 +50,15 @@ export default async function handler(req, res) {
       if (!response.ok) {
         const errorData = await response.text();
         console.error('Brevo Error:', errorData);
-        // Continue with other chunks even if one fails
+        lastError = errorData;
+        // Continue with other chunks even if one fails, but record error
       } else {
         successCount += chunk.length;
       }
+    }
+
+    if (successCount === 0 && lastError) {
+       return res.status(400).json({ success: false, error: 'Brevo API Error', details: lastError });
     }
 
     return res.status(200).json({ success: true, message: `Sent emails to ${successCount} recipients.` });

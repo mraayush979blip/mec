@@ -340,7 +340,11 @@ function AdminDashboard({ session, profile }) {
   const dispatchEmailsForEvent = async (eventTitle, eventDescription) => {
     try {
       const { data: students } = await supabase.from('profiles').select('email').eq('role', 'student');
-      if (!students || students.length === 0) return;
+      if (!students || students.length === 0) {
+        console.warn('Email Dispatch: No students found in the database. Skipping email send.');
+        alert('Event created, but no students found in the database to send emails to.');
+        return;
+      }
       
       const recipients = students.map(s => s.email).filter(Boolean);
 
