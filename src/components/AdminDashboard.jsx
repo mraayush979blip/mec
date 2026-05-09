@@ -293,19 +293,7 @@ function AdminDashboard({ session, profile }) {
     setLoading(false);
   };
 
-  const sendPushNotification = async (eventTitle) => {
-    try {
-      await fetch('/api/send-notification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ eventTitle })
-      });
-    } catch (error) {
-      console.error("Push Error:", error);
-    }
-  };
+
 
   const handleCreateEvent = async (e) => {
     e.preventDefault();
@@ -341,7 +329,6 @@ function AdminDashboard({ session, profile }) {
       handleTabChange('events');
       fetchEvents();
       if (!editingEvent) {
-        sendPushNotification(title);
         dispatchEmailsForEvent(title, description);
       }
       alert(editingEvent ? "Event updated successfully!" : "Event created successfully!");

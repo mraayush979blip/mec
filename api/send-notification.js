@@ -14,8 +14,8 @@ export default async function handler(req, res) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // In a real app, move this key to Vercel env vars, e.g. process.env.ONESIGNAL_REST_API_KEY
-        'Authorization': 'Basic os_v2_app_52d4ulf5rbf37ktrcwwgy36xvxlydgw76uyerkfj4o6ty5fcxcbgrydvgfrugsl5x6epu4viwzl4bgpwn3yubphdedmqvhl4pwmwfxy'
+        // Use environment variable for the REST API Key to ensure security and prevent 403s
+        'Authorization': `Basic ${process.env.VITE_ONESIGNAL_REST_API_KEY || process.env.ONESIGNAL_REST_API_KEY}`
       },
       body: JSON.stringify({
         app_id: "ee87ca2c-bd88-4bbf-aa71-15ac6c6fd7ad",
