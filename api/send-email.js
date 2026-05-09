@@ -35,7 +35,10 @@ export default async function handler(req, res) {
           'content-type': 'application/json'
         },
         body: JSON.stringify({
-          sender: { name: 'Admin', email: 'admin@mechatronian.com' }, // Update with verified sender email if needed
+          sender: { 
+            name: 'Mechatronian Admin', 
+            email: process.env.VITE_BREVO_SENDER_EMAIL || 'admin@mechatronian.com' 
+          },
           bcc: bccList,
           subject: subject,
           htmlContent: htmlContent
