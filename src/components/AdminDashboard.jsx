@@ -377,6 +377,12 @@ function AdminDashboard({ session, profile }) {
         })
       });
 
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => ({ error: 'Could not parse JSON' }));
+        console.error('Email API failed with status:', res.status, 'Error Details:', errorBody);
+        alert(`Failed to send emails. API returned status ${res.status}. Check console for details.`);
+      }
+
       const status = res.ok ? 'success' : 'failed';
 
       await supabase.from('email_logs').insert([{
