@@ -467,7 +467,7 @@ function App() {
                     <form className="fade-in-up delay-3" onSubmit={(e) => { setAuthFlow('login'); handleAuth(e); }}>
                       {errorMsg && <div className="error-alert">{errorMsg}</div>}
                       <div className="input-group">
-                        <label className="input-label">College Email</label>
+                        <label className="input-label">Personal Email</label>
                         <input type="email" className="glass-input" placeholder="student@gmail.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
                       </div>
                       <div className="input-group">
