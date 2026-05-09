@@ -295,19 +295,12 @@ function AdminDashboard({ session, profile }) {
 
   const sendPushNotification = async (eventTitle) => {
     try {
-      await fetch('https://onesignal.com/api/v1/notifications', {
+      await fetch('/api/send-notification', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Basic os_v2_app_52d4ulf5rbf37ktrcwwgy36xvxlydgw76uyerkfj4o6ty5fcxcbgrydvgfrugsl5x6epu4viwzl4bgpwn3yubphdedmqvhl4pwmwfxy'
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          app_id: "ee87ca2c-bd88-4bbf-aa71-15ac6c6fd7ad",
-          included_segments: ["All"],
-          headings: { "en": "New MECHA Activity! 🚀" },
-          contents: { "en": `${eventTitle} has been posted. Open the app to join now!` },
-          url: "https://mechatronics-phi.vercel.app/"
-        })
+        body: JSON.stringify({ eventTitle })
       });
     } catch (error) {
       console.error("Push Error:", error);
