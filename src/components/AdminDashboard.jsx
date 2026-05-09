@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, Calendar, PlusCircle, Activity, Users, Settings, Globe } from 'lucide-react';
+import { LogOut, Calendar, PlusCircle, Activity, Users, Settings, Globe, Mail } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
@@ -26,12 +26,23 @@ function AdminDashboard({ session, profile }) {
     }
   };
 
-  const tabs = ['overview', 'events', 'users', 'logs', 'discovery', 'create'];
+  const tabs = ['overview', 'events', 'users', 'logs', 'emails', 'discovery', 'create'];
   const [allUsers, setAllUsers] = useState([]);
   const [logs, setLogs] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewingUser, setViewingUser] = useState(null);
   const [userLogs, setUserLogs] = useState([]);
+  const [emailLogs, setEmailLogs] = useState([]);
+
+  const fetchEmailLogs = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('email_logs')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (data) setEmailLogs(data);
+    setLoading(false);
+  };
 
   const handleTabChange = (tab) => {
     navigate(`/admin/${tab}`);
@@ -100,6 +111,8 @@ function AdminDashboard({ session, profile }) {
        await fetchUsers();
     } else if (activeTab === 'logs') {
        await fetchLogs();
+    } else if (activeTab === 'emails') {
+       await fetchEmailLogs();
     }
   };
 
@@ -333,10 +346,63 @@ function AdminDashboard({ session, profile }) {
       resetForm();
       handleTabChange('events');
       fetchEvents();
-      if (!editingEvent) sendPushNotification(title);
+      if (!editingEvent) {
+        sendPushNotification(title);
+        dispatchEmailsForEvent(title, description);
+      }
       alert(editingEvent ? "Event updated successfully!" : "Event created successfully!");
     } else {
       alert("Error: " + error.message);
+    }
+  };
+
+  const dispatchEmailsForEvent = async (eventTitle, eventDescription) => {
+    try {
+      const { data: students } = await supabase.from('profiles').select('email').eq('role', 'student');
+      if (!students || students.length === 0) return;
+      
+      const recipients = students.map(s => s.email).filter(Boolean);
+
+      const res = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: `New Event: ${eventTitle}`,
+          htmlContent: `
+            <div style="font-family: 'Inter', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9fafb; padding: 20px; border-radius: 12px;">
+              <div style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #f3f4f6;">
+                <div style="background-color: #111111; padding: 30px; text-align: center;">
+                  <h1 style="color: #ffffff; margin: 0; font-size: 24px; letter-spacing: -0.5px; font-weight: 800;">Mechatronian</h1>
+                  <p style="color: #34C759; margin: 5px 0 0 0; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;">New Alert</p>
+                </div>
+                <div style="padding: 40px 30px;">
+                  <h2 style="color: #111111; margin-top: 0; font-size: 22px; font-weight: 700;">${eventTitle}</h2>
+                  <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">${eventDescription}</p>
+                  <div style="text-align: center;">
+                    <a href="https://mechatronics-phi.vercel.app" style="display: inline-block; background-color: #34C759; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 16px; padding: 14px 32px; border-radius: 10px; box-shadow: 0 4px 12px rgba(52, 199, 89, 0.25);">Open Dashboard</a>
+                  </div>
+                </div>
+                <div style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #f3f4f6;">
+                  <p style="color: #9ca3af; font-size: 12px; margin: 0;">You are receiving this because you are a registered student.</p>
+                </div>
+              </div>
+            </div>
+          `,
+          recipients
+        })
+      });
+
+      const status = res.ok ? 'success' : 'failed';
+
+      await supabase.from('email_logs').insert([{
+        admin_id: profile.id,
+        event_title: eventTitle,
+        subject: `New Event: ${eventTitle}`,
+        status,
+        recipient_count: recipients.length
+      }]);
+    } catch (err) {
+      console.error('Failed to send emails', err);
     }
   };
 
@@ -450,6 +516,10 @@ function AdminDashboard({ session, profile }) {
         <div className={`mobile-nav-item ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => handleTabChange('logs')}>
           <Activity size={20} />
           <span>Logs</span>
+        </div>
+        <div className={`mobile-nav-item ${activeTab === 'emails' ? 'active' : ''}`} onClick={() => handleTabChange('emails')}>
+          <Mail size={20} />
+          <span>Emails</span>
         </div>
         <div className={`mobile-nav-item ${activeTab === 'create' ? 'active' : ''}`} onClick={() => handleTabChange('create')}>
           <PlusCircle size={20} />
@@ -867,6 +937,45 @@ function AdminDashboard({ session, profile }) {
                         {new Date(log.created_at).toLocaleString()} • {log.profiles?.email || 'N/A'}
                       </p>
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'emails' && (
+          <div className="fade-in-up">
+            <h1 className="title" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>Email History</h1>
+            <p className="subtitle">History of automated emails sent via Brevo to students.</p>
+
+            {loading ? (
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                 {[1,2,3,4,5].map(i => <div key={i} className="skeleton" style={{ width: '100%', height: '80px', borderRadius: '18px' }} />)}
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                {emailLogs.length === 0 ? (
+                  <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No emails have been sent yet.</div>
+                ) : emailLogs.map(log => (
+                  <div key={log.id} className="glass-panel" style={{ padding: '1.2rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: log.status === 'success' ? 'rgba(52,199,89,0.1)' : 'rgba(255,59,48,0.1)', color: log.status === 'success' ? '#34C759' : '#FF3B30', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Mail size={20} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontSize: '1.1rem', fontWeight: 700 }}>
+                        {log.subject}
+                      </p>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        Event: <strong style={{ color: 'var(--text-primary)' }}>{log.event_title}</strong> • Sent to <strong style={{ color: 'var(--accent)' }}>{log.recipient_count}</strong> students
+                      </p>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '0.2rem 0 0 0' }}>
+                        {new Date(log.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                    <span className={`badge ${log.status === 'success' ? 'badge-green' : 'badge-red'}`} style={{ fontSize: '0.7rem' }}>
+                      {log.status.toUpperCase()}
+                    </span>
                   </div>
                 ))}
               </div>

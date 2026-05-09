@@ -226,6 +226,9 @@ function App() {
             setErrorMsg('Your email is not verified. Please enter the OTP sent to your email.');
             return;
           }
+          if (error.message.includes('Invalid login credentials')) {
+            throw new Error("Invalid credentials. If you haven't registered yet, please sign up first!");
+          }
           throw error;
         }
         localStorage.setItem('fresh_login', 'true');
