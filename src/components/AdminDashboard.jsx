@@ -19,6 +19,7 @@ function AdminDashboard({ session, profile }) {
   const [recentRequests, setRecentRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingEvent, setEditingEvent] = useState(null);
+  const [events, setEvents] = useState([]);
 
   const triggerHaptic = (pattern = 10) => {
     if (window.navigator && window.navigator.vibrate) {
