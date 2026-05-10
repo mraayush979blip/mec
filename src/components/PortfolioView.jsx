@@ -1,8 +1,8 @@
 import React from 'react';
 import { 
-  Mail, Github, Linkedin, Globe, MapPin, 
+  Mail, Globe, MapPin, 
   ExternalLink, Download, ArrowLeft, Award, 
-  Briefcase, GraduationCap, Code, User
+  Briefcase, GraduationCap, Code, User, GitBranch
 } from 'lucide-react';
 
 export default function PortfolioView({ profile, onClose }) {
@@ -76,8 +76,8 @@ export default function PortfolioView({ profile, onClose }) {
               </div>
             )}
             <div style={{ display: 'flex', gap: '1rem' }}>
-              {profile.github_url && <a href={profile.github_url} target="_blank" style={{ color: 'var(--text-primary)' }}><Github size={20} /></a>}
-              {profile.linkedin_url && <a href={profile.linkedin_url} target="_blank" style={{ color: 'var(--text-primary)' }}><Linkedin size={20} /></a>}
+              {profile.github_url && <a href={profile.github_url} target="_blank" style={{ color: 'var(--text-primary)' }}><GitBranch size={20} /></a>}
+              {profile.linkedin_url && <a href={profile.linkedin_url} target="_blank" style={{ color: 'var(--text-primary)' }}><Globe size={20} /></a>}
             </div>
           </div>
         </header>
