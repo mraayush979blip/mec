@@ -12,6 +12,28 @@ export default function PortfolioView({ profile, onClose }) {
 
   if (!profile) return null;
 
+  const cleanText = (text) => {
+    if (!text) return '';
+    let cleaned = text.trim();
+    if (!cleaned) return '';
+
+    // 1. Capitalize first letter of every sentence
+    // Splits by . ? or ! followed by space
+    cleaned = cleaned.replace(/(^|[.?!]\s+)([a-z])/g, (match, p1, p2) => p1 + p2.toUpperCase());
+
+    // 2. Ensure it ends with a full stop if it's a paragraph
+    if (cleaned.length > 0 && !/[.?!]$/.test(cleaned)) {
+      cleaned += '.';
+    }
+
+    // 3. Common fixes (i -> I, mechatronics -> Mechatronics)
+    cleaned = cleaned.replace(/\b(i)\b/g, 'I');
+    cleaned = cleaned.replace(/\bmechatronics\b/gi, 'Mechatronics');
+    
+    return cleaned;
+  };
+
+
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 20000,
@@ -125,7 +147,7 @@ export default function PortfolioView({ profile, onClose }) {
           {profile.education && (
             <section>
                <h3 style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.15em', color: '#007AFF', marginBottom: '1.2rem' }}>Education</h3>
-               <div style={{ fontSize: '0.85rem', color: '#4a5568', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{profile.education}</div>
+               <div style={{ fontSize: '0.85rem', color: '#4a5568', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{cleanText(profile.education)}</div>
             </section>
           )}
         </div>
@@ -145,7 +167,7 @@ export default function PortfolioView({ profile, onClose }) {
               <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1e293b', borderBottom: '2px solid #f1f5f9', paddingBottom: '0.5rem', marginBottom: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                 <User size={18} color="#007AFF" /> Professional Summary
               </h2>
-              <p style={{ color: '#475569', lineHeight: '1.7', fontSize: '0.95rem' }}>{profile.bio}</p>
+              <p style={{ color: '#475569', lineHeight: '1.7', fontSize: '0.95rem' }}>{cleanText(profile.bio)}</p>
             </section>
           )}
 
@@ -155,7 +177,7 @@ export default function PortfolioView({ profile, onClose }) {
               <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1e293b', borderBottom: '2px solid #f1f5f9', paddingBottom: '0.5rem', marginBottom: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                 <Briefcase size={18} color="#007AFF" /> Experience
               </h2>
-              <div style={{ color: '#475569', lineHeight: '1.7', fontSize: '0.95rem', whiteSpace: 'pre-wrap' }}>{profile.experience}</div>
+              <div style={{ color: '#475569', lineHeight: '1.7', fontSize: '0.95rem', whiteSpace: 'pre-wrap' }}>{cleanText(profile.experience)}</div>
             </section>
           )}
 
@@ -168,8 +190,8 @@ export default function PortfolioView({ profile, onClose }) {
               <div style={{ display: 'grid', gap: '1.5rem' }}>
                 {profile.projects_json.map((p, i) => (
                   <div key={i} style={{ borderLeft: '3px solid #e2e8f0', paddingLeft: '1.2rem' }}>
-                    <h4 style={{ fontWeight: 800, color: '#0f172a', fontSize: '1rem', marginBottom: '0.3rem' }}>{p.name}</h4>
-                    <p style={{ fontSize: '0.9rem', color: '#64748b', lineHeight: '1.5' }}>{p.description}</p>
+                    <h4 style={{ fontWeight: 800, color: '#0f172a', fontSize: '1rem', marginBottom: '0.3rem' }}>{cleanText(p.name)}</h4>
+                    <p style={{ fontSize: '0.9rem', color: '#64748b', lineHeight: '1.5' }}>{cleanText(p.description)}</p>
                   </div>
                 ))}
               </div>
@@ -182,7 +204,7 @@ export default function PortfolioView({ profile, onClose }) {
               <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1e293b', borderBottom: '2px solid #f1f5f9', paddingBottom: '0.5rem', marginBottom: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                 <Award size={18} color="#34C759" /> Achievements
               </h2>
-              <div style={{ color: '#475569', lineHeight: '1.7', fontSize: '0.95rem', whiteSpace: 'pre-wrap' }}>{profile.achievements}</div>
+              <div style={{ color: '#475569', lineHeight: '1.7', fontSize: '0.95rem', whiteSpace: 'pre-wrap' }}>{cleanText(profile.achievements)}</div>
             </section>
           )}
 
