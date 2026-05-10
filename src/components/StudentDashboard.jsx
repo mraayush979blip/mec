@@ -2394,13 +2394,24 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                   <Award size={20} style={{ marginRight: '0.5rem', display: 'inline-block', verticalAlign: 'middle' }} />
                   Generate Professional Portfolio
                 </button>
+                <button className="btn btn-secondary" style={{ padding: '1.2rem', background: isInstalled ? 'rgba(52, 199, 89, 0.1)' : 'rgba(0, 113, 227, 0.1)', color: isInstalled ? '#34C759' : 'var(--accent)' }} onClick={handleInstallClick}>
+                   {isInstalled ? <><CheckCircle size={20} style={{ marginRight: '0.5rem', display: 'inline-block', verticalAlign: 'middle' }}/> App Installed</> : <><Download size={20} style={{ marginRight: '0.5rem', display: 'inline-block', verticalAlign: 'middle' }}/> Install App</>}
+                </button>
                 <button className="btn btn-secondary" style={{ padding: '1.2rem', background: 'rgba(255, 59, 48, 0.1)', color: '#FF3B30' }} onClick={() => supabase.auth.signOut()}>
                   <LogOut size={20} style={{ marginRight: '0.5rem', display: 'inline-block', verticalAlign: 'middle' }}/> Sign Out
                 </button>
               </div>
+
+              {/* DEVELOPER CREDIT */}
+              <div style={{ marginTop: '4rem', textAlign: 'center', opacity: 0.5, fontSize: '0.85rem' }}>
+                <p>Developed with ❤️ by <a href="https://aayush-sharma-beige.vercel.app/" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>Aayush Sharma</a></p>
+                <p style={{ marginTop: '0.4rem', fontSize: '0.75rem' }}>Mechatronian Hub Platform &copy; 2026</p>
+              </div>
+
             </div>
           </div>
         )}
+
 
         {showPortfolio && (
           <PortfolioView 
