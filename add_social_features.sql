@@ -108,4 +108,14 @@ $$ LANGUAGE SQL;
 -- You can enable it in Dashboard -> Database -> Extensions
 -- SELECT cron.schedule('cleanup-old-notifications','0 2 * * 0', $$ DELETE FROM in_app_notifications WHERE created_at < NOW() - INTERVAL '60 days' $$);
 -- SELECT cron.schedule('cleanup-old-messages','0 3 * * 0', $$ DELETE FROM messages WHERE created_at < NOW() - INTERVAL '30 days' $$);
--- SELECT cron.schedule('cleanup-old-team-messages','0 4 * * 0', $$ DELETE FROM team_messages WHERE created_at < NOW() - INTERVAL '30 days' $$);
+-- 7. PROFESSIONAL PROFILE ENHANCEMENTS
+ALTER TABLE profiles 
+ADD COLUMN IF NOT EXISTS bio TEXT,
+ADD COLUMN IF NOT EXISTS education TEXT,
+ADD COLUMN IF NOT EXISTS experience TEXT,
+ADD COLUMN IF NOT EXISTS projects_json JSONB DEFAULT '[]',
+ADD COLUMN IF NOT EXISTS achievements TEXT;
+
+-- Index for searching (optional)
+CREATE INDEX IF NOT EXISTS idx_profiles_skills ON profiles USING gin (skills);
+

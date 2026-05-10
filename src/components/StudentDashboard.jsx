@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase';
 import Logo from './Logo';
 import NotificationBell from './NotificationBell';
 import TeamChat from './TeamChat';
+import PortfolioView from './PortfolioView';
 
 const Skeleton = ({ width, height, borderRadius = '12px', margin = '0' }) => (
   <div className="skeleton" style={{ width, height, borderRadius, margin }} />
@@ -134,7 +135,13 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   const [formWhatsapp, setFormWhatsapp] = useState(profile?.whatsapp_no || '');
   const [formLinkedin, setFormLinkedin] = useState(profile?.linkedin_url || '');
   const [formGithub, setFormGithub] = useState(profile?.github_url || '');
+  const [formBio, setFormBio] = useState(profile?.bio || '');
+  const [formEducation, setFormEducation] = useState(profile?.education || '');
+  const [formExperience, setFormExperience] = useState(profile?.experience || '');
+  const [formAchievements, setFormAchievements] = useState(profile?.achievements || '');
+  const [formProjects, setFormProjects] = useState(profile?.projects_json || []);
   const [saving, setSaving] = useState(false);
+  const [showPortfolio, setShowPortfolio] = useState(false);
   const [skillSearch, setSkillSearch] = useState('');
 
   // Find Member Form State
@@ -486,12 +493,17 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
           linkedin_url: formLinkedin,
           github_url: formGithub,
           dev_role: formDevRole,
-          resume_url: formResume
+          resume_url: formResume,
+          bio: formBio,
+          education: formEducation,
+          experience: formExperience,
+          achievements: formAchievements,
+          projects_json: formProjects
         })
         .eq('id', profile.id);
       
       if (error) throw error;
-      alert('Profile synced with cloud successfully!');
+      alert('Professional profile synced with cloud successfully!');
     } catch (error) {
       console.error('Error updating profile:', error);
       alert('Error updating profile: ' + error.message);
@@ -2246,59 +2258,128 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-                <div className="input-group">
-                  <label className="input-label">Full Name</label>
-                  <input type="text" className="glass-input" value={formName} onChange={(e) => setFormName(e.target.value)} />
-                </div>
-                <div className="input-group">
-                  <label className="input-label">WhatsApp Number</label>
-                  <input type="tel" className="glass-input" value={formWhatsapp} onChange={(e)=>setFormWhatsapp(e.target.value)} placeholder="+91..." />
-                </div>
-                <div className="input-group">
-                  <label className="input-label">Dev Role (e.g. Fullstack Developer)</label>
-                  <input type="text" className="glass-input" value={formDevRole} onChange={(e)=>setFormDevRole(e.target.value)} />
-                </div>
-                <div className="input-group">
-                  <label className="input-label">Technical Skills (comma separated)</label>
-                  <input type="text" className="glass-input" value={formSkills} onChange={(e)=>setFormSkills(e.target.value)} />
-                </div>
-                <div className="input-group">
-                  <label className="input-label">LinkedIn Profile</label>
-                  <div style={{ position: 'relative' }}>
-                    <Globe size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-                    <input type="url" className="glass-input" style={{ paddingLeft: '3rem' }} value={formLinkedin} onChange={(e)=>setFormLinkedin(e.target.value)} placeholder="https://..." />
-                  </div>
-                </div>
-                <div className="input-group">
-                  <label className="input-label">GitHub Profile</label>
-                  <div style={{ position: 'relative' }}>
-                    <GitBranch size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-                    <input type="url" className="glass-input" style={{ paddingLeft: '3rem' }} value={formGithub} onChange={(e)=>setFormGithub(e.target.value)} placeholder="https://..." />
-                  </div>
-                </div>
                 <div className="input-group" style={{ gridColumn: '1 / -1' }}>
-                  <label className="input-label">Resume Link (PDF / G-Drive)</label>
-                  <div style={{ position: 'relative' }}>
-                    <FileText size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-                    <input type="url" className="glass-input" style={{ paddingLeft: '3rem' }} value={formResume} onChange={(e)=>setFormResume(e.target.value)} placeholder="https://..." />
+                  <label className="input-label">Professional Bio / Summary</label>
+                  <textarea 
+                    className="glass-input" 
+                    style={{ minHeight: '120px', padding: '1rem', lineHeight: '1.6' }} 
+                    value={formBio} 
+                    onChange={(e) => setFormBio(e.target.value)} 
+                    placeholder="Write a short professional summary about yourself..."
+                  />
+                </div>
+
+                <div className="input-group">
+                  <label className="input-label">Education</label>
+                  <textarea 
+                    className="glass-input" 
+                    style={{ minHeight: '100px', padding: '1rem' }} 
+                    value={formEducation} 
+                    onChange={(e) => setFormEducation(e.target.value)} 
+                    placeholder="e.g. B.Tech in Mechatronics, IIT Bombay (2022-2026)"
+                  />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">Work/Internship Experience</label>
+                  <textarea 
+                    className="glass-input" 
+                    style={{ minHeight: '100px', padding: '1rem' }} 
+                    value={formExperience} 
+                    onChange={(e) => setFormExperience(e.target.value)} 
+                    placeholder="Details about your past work or internships..."
+                  />
+                </div>
+
+                <div className="input-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="input-label">Achievements & Awards</label>
+                  <textarea 
+                    className="glass-input" 
+                    style={{ minHeight: '80px', padding: '1rem' }} 
+                    value={formAchievements} 
+                    onChange={(e) => setFormAchievements(e.target.value)} 
+                    placeholder="List your key achievements..."
+                  />
+                </div>
+
+                <div className="input-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="input-label">Key Projects</label>
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    {formProjects.map((p, i) => (
+                      <div key={i} className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', display: 'flex', gap: '1rem', alignItems: 'flex-start', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ flex: 1 }}>
+                           <input className="glass-input" style={{ marginBottom: '0.8rem', fontWeight: 700 }} value={p.name} onChange={(e) => {
+                             const newP = [...formProjects];
+                             newP[i].name = e.target.value;
+                             setFormProjects(newP);
+                           }} placeholder="Project Name" />
+                           <textarea className="glass-input" style={{ fontSize: '0.85rem', minHeight: '60px' }} value={p.description} onChange={(e) => {
+                             const newP = [...formProjects];
+                             newP[i].description = e.target.value;
+                             setFormProjects(newP);
+                           }} placeholder="Short Description" />
+                        </div>
+                        <button className="btn" style={{ color: '#FF3B30', padding: '0.5rem' }} onClick={() => setFormProjects(formProjects.filter((_, idx) => idx !== i))}><Trash2 size={18} /></button>
+                      </div>
+                    ))}
+                    <button className="btn btn-secondary" style={{ padding: '1rem', borderStyle: 'dashed', background: 'rgba(255,255,255,0.02)' }} onClick={() => setFormProjects([...formProjects, { name: '', description: '', link: '' }])}>
+                      + Add New Project
+                    </button>
                   </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem', flexWrap: 'wrap' }}>
-                <button className="btn btn-primary" style={{ flex: 1, minWidth: '250px', padding: '1.2rem' }} onClick={handleSaveProfile} disabled={saving}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '3rem' }}>
+                <button className="btn btn-primary" style={{ padding: '1.2rem', fontSize: '1rem' }} onClick={handleSaveProfile} disabled={saving}>
                   {saving ? 'Syncing Profile...' : 'Save Professional Profile'}
                 </button>
-                <button className="btn btn-secondary" style={{ padding: '1.2rem 1.5rem', background: isInstalled ? 'rgba(52, 199, 89, 0.1)' : 'rgba(0, 113, 227, 0.1)', color: isInstalled ? '#34C759' : 'var(--accent)', flex: 1, minWidth: '200px' }} onClick={handleInstallClick}>
-                   {isInstalled ? <><CheckCircle size={20} style={{ marginRight: '0.5rem' }}/> App Installed</> : <><Download size={20} style={{ marginRight: '0.5rem' }}/> Install App</>}
+                <button 
+                  className="btn" 
+                  style={{ 
+                    padding: '1.2rem', 
+                    fontSize: '1rem', 
+                    background: 'var(--gradient-purple)', 
+                    color: 'white', 
+                    fontWeight: 800,
+                    boxShadow: '0 10px 20px rgba(175, 82, 222, 0.2)'
+                  }} 
+                  onClick={() => {
+                    if (!formBio || !formEducation) {
+                      alert("Pehle apna Bio aur Education bhar dein taaki resume achha dikhe!");
+                    } else {
+                      setShowPortfolio(true);
+                    }
+                  }}
+                >
+                  <Award size={20} style={{ marginRight: '0.5rem', display: 'inline-block', verticalAlign: 'middle' }} />
+                  Generate Professional Portfolio
                 </button>
-                <button className="btn btn-secondary" style={{ padding: '1.2rem 1.5rem', background: 'rgba(255, 59, 48, 0.1)', color: '#FF3B30', flexShrink: 0 }} onClick={() => supabase.auth.signOut()}>
-                  <LogOut size={20} style={{ marginRight: '0.5rem' }}/> Sign Out
+                <button className="btn btn-secondary" style={{ padding: '1.2rem', background: 'rgba(255, 59, 48, 0.1)', color: '#FF3B30' }} onClick={() => supabase.auth.signOut()}>
+                  <LogOut size={20} style={{ marginRight: '0.5rem', display: 'inline-block', verticalAlign: 'middle' }}/> Sign Out
                 </button>
               </div>
             </div>
           </div>
         )}
+
+        {showPortfolio && (
+          <PortfolioView 
+            profile={{
+              ...profile,
+              full_name: formName,
+              dev_role: formDevRole,
+              skills: formSkills.split(',').map(s => s.trim()).filter(s => s),
+              bio: formBio,
+              education: formEducation,
+              experience: formExperience,
+              achievements: formAchievements,
+              projects_json: formProjects,
+              github_url: formGithub,
+              linkedin_url: formLinkedin
+            }} 
+            onClose={() => setShowPortfolio(false)} 
+          />
+        )}
+
 
         {viewProfileId && (
           <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={(e) => { if (e.target === e.currentTarget) setViewProfileId(null); }}>
