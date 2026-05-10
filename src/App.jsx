@@ -155,6 +155,35 @@ function App() {
     };
   }, [resendTimer]);
 
+  // OTP Pending Cleanup — signOut on exit paths (browser back, tab close)
+  // Uses a ref to avoid stale closure bug on successful verification
+  const isVerifiedRef = React.useRef(isVerified);
+  useEffect(() => { isVerifiedRef.current = isVerified; }, [isVerified]);
+
+  useEffect(() => {
+    if (!isOtpSent || isVerified) return;
+
+    // Browser back button
+    const handlePopState = () => {
+      if (!isVerifiedRef.current) supabase.auth.signOut();
+    };
+
+    // Tab close / refresh
+    const handleBeforeUnload = () => {
+      if (!isVerifiedRef.current) supabase.auth.signOut();
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // NOTE: No signOut() here — stale closure would wrongly fire on successful verify
+    };
+  }, [isOtpSent, isVerified]);
+
+
   const showNotification = (title, body) => {
     if (!("Notification" in window)) return;
 
@@ -525,6 +554,27 @@ function App() {
                         <h1 className="title" style={{ fontSize: '2rem' }}>Verify Email</h1>
                         <p className="subtitle">We've sent an 8-digit code to <strong>{email}</strong>. Please enter it below.</p>
 
+                        {/* Spam warning */}
+                        <div style={{
+                          background: 'rgba(255, 149, 0, 0.08)',
+                          border: '1px solid rgba(255, 149, 0, 0.25)',
+                          borderRadius: '16px',
+                          padding: '1rem 1.2rem',
+                          marginBottom: '1.5rem',
+                          textAlign: 'left',
+                          display: 'flex',
+                          gap: '0.8rem',
+                          alignItems: 'flex-start'
+                        }}>
+                          <span style={{ fontSize: '1.2rem', flexShrink: 0 }}>⚠️</span>
+                          <div>
+                            <p style={{ fontSize: '0.85rem', color: '#FF9500', fontWeight: 700, marginBottom: '0.2rem' }}>Can't find the email?</p>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                              Please check your <strong style={{ color: 'var(--text-primary)' }}>Spam / Junk</strong> folder. The email comes from <em>Supabase</em> and may be filtered by some providers.
+                            </p>
+                          </div>
+                        </div>
+
                         <form onSubmit={(e) => { setAuthFlow('signup'); handleAuth(e); }}>
                           {errorMsg && <div className="error-alert" style={{ marginBottom: '1.5rem' }}>{errorMsg}</div>}
                           <div className="input-group">
@@ -556,7 +606,20 @@ function App() {
                             )}
                           </p>
                           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                            Entered wrong email? <span onClick={() => { setIsOtpSent(false); setResendTimer(0); setResendAttempts(0); }} style={{ color: 'var(--text-secondary)', cursor: 'pointer', textDecoration: 'underline' }}>Go back</span>
+                            Entered wrong email?{' '}
+                            <span
+                              onClick={async () => {
+                                await supabase.auth.signOut(); // clean up the unverified session
+                                setIsOtpSent(false);
+                                setResendTimer(0);
+                                setResendAttempts(0);
+                                setOtp('');
+                                setErrorMsg('');
+                              }}
+                              style={{ color: 'var(--text-secondary)', cursor: 'pointer', textDecoration: 'underline' }}
+                            >
+                              Go back
+                            </span>
                           </p>
                         </div>
                       </div>
