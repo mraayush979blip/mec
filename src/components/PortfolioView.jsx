@@ -74,9 +74,10 @@ export default function PortfolioView({ profile, onClose }) {
         maxWidth: '1000px', margin: '3rem auto', 
         background: '#fff', color: '#1a1a1a',
         boxShadow: '0 50px 100px rgba(0,0,0,0.4)',
-        display: 'flex', minHeight: '1200px',
+        display: 'flex',
         position: 'relative'
       }} className="resume-sheet">
+
         
         {/* LEFT SIDEBAR (Contact & Skills) */}
         <div style={{
@@ -221,21 +222,39 @@ export default function PortfolioView({ profile, onClose }) {
           to { opacity: 1; transform: translateY(0); }
         }
         @media print {
-          .no-print { display: none !important; }
-          .portfolio-viewer { background: #fff !important; position: static !important; overflow: visible !important; }
+          /* Hide EVERYTHING by default */
+          body * { visibility: hidden; }
+          
+          /* Only show the resume sheet and its children */
+          .resume-sheet, .resume-sheet * { visibility: visible; }
+          
+          /* Position the resume sheet at the very top left */
           .resume-sheet { 
-            box-shadow: none !important; 
-            margin: 0 !important; 
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
             width: 100% !important;
-            max-width: none !important;
+            box-shadow: none !important;
+            border: none !important;
+            background: white !important;
           }
-          body { background: #fff !important; margin: 0; padding: 0; }
+
+          /* Hide UI elements */
+          .no-print, .portfolio-viewer { background: white !important; }
+          .portfolio-viewer { position: absolute !important; inset: 0 !important; overflow: visible !important; }
+
+          /* Reset page margins */
           @page {
-            margin: 15mm;
+            margin: 0;
             size: auto;
           }
+          
+          body { background: white !important; margin: 0; padding: 0; }
         }
       `}</style>
+
     </div>
   );
 }
