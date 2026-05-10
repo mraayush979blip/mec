@@ -63,13 +63,58 @@ export default function TeamChat({ teamId, listingId, teamName, currentUser, onC
       content
     }]);
 
-    if (error) {
+    if (!error) {
+      notifyTeam(content);
+    } else {
       console.error('Send error:', error);
       setMessages(prev => prev.filter(m => m.id !== optimistic.id));
       setInput(content);
     }
     setSending(false);
   };
+
+  const notifyTeam = async (content) => {
+    try {
+      let recipientIds = [];
+      
+      if (teamId) {
+        const { data } = await supabase.from('team_members').select('user_id').eq('team_id', teamId);
+        recipientIds = data?.map(m => m.user_id) || [];
+      } else if (listingId) {
+        const { data: listing } = await supabase.from('team_listings').select('creator_id').eq('id', listingId).single();
+        const { data: approved } = await supabase.from('join_requests').select('applicant_id').eq('listing_id', listingId).eq('status', 'approved');
+        recipientIds = [listing?.creator_id, ...(approved?.map(r => r.applicant_id) || [])];
+      }
+
+      const others = recipientIds.filter(id => id && id !== currentUser.id);
+      if (others.length === 0) return;
+
+      // 1. In-app notifications
+      const notifications = others.map(uid => ({
+        user_id: uid,
+        title: `New message in ${teamName}`,
+        body: `${currentUser.full_name}: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`,
+        type: 'chat',
+        link: '/dashboard/teams'
+      }));
+      await supabase.from('in_app_notifications').insert(notifications);
+
+      // 2. Push notifications (OneSignal)
+      fetch('/api/send-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userIds: others,
+          title: teamName,
+          message: `${currentUser.full_name}: ${content.substring(0, 100)}`
+        })
+      }).catch(e => console.error('Push error:', e));
+
+    } catch (err) {
+      console.error('Notify error:', err);
+    }
+  };
+
 
   const formatTime = (ts) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
