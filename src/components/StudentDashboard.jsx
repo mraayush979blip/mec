@@ -2258,8 +2258,49 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+                <div className="input-group">
+                  <label className="input-label">Full Name</label>
+                  <input type="text" className="glass-input" value={formName} onChange={(e) => setFormName(e.target.value)} />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">WhatsApp Number</label>
+                  <input type="tel" className="glass-input" value={formWhatsapp} onChange={(e)=>setFormWhatsapp(e.target.value)} placeholder="+91..." />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">Dev Role (e.g. Fullstack Developer)</label>
+                  <input type="text" className="glass-input" value={formDevRole} onChange={(e)=>setFormDevRole(e.target.value)} />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">Technical Skills (comma separated)</label>
+                  <input type="text" className="glass-input" value={formSkills} onChange={(e)=>setFormSkills(e.target.value)} />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">LinkedIn Profile</label>
+                  <div style={{ position: 'relative' }}>
+                    <Globe size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                    <input type="url" className="glass-input" style={{ paddingLeft: '3rem' }} value={formLinkedin} onChange={(e)=>setFormLinkedin(e.target.value)} placeholder="https://..." />
+                  </div>
+                </div>
+                <div className="input-group">
+                  <label className="input-label">GitHub Profile</label>
+                  <div style={{ position: 'relative' }}>
+                    <GitBranch size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                    <input type="url" className="glass-input" style={{ paddingLeft: '3rem' }} value={formGithub} onChange={(e)=>setFormGithub(e.target.value)} placeholder="https://..." />
+                  </div>
+                </div>
+
                 <div className="input-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="input-label">Existing Resume Link (PDF / G-Drive)</label>
+                  <div style={{ position: 'relative' }}>
+                    <FileText size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                    <input type="url" className="glass-input" style={{ paddingLeft: '3rem' }} value={formResume} onChange={(e)=>setFormResume(e.target.value)} placeholder="https://..." />
+                  </div>
+                </div>
+
+                <div className="input-group" style={{ gridColumn: '1 / -1' }}>
+
                   <label className="input-label">Professional Bio / Summary</label>
+
                   <textarea 
                     className="glass-input" 
                     style={{ minHeight: '120px', padding: '1rem', lineHeight: '1.6' }} 
