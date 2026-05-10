@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, Calendar, PlusCircle, Activity, Users, Settings, Globe, Mail } from 'lucide-react';
+import { LogOut, Calendar, PlusCircle, Activity, Users, Settings, Globe, Mail, Share2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
@@ -280,6 +280,26 @@ function AdminDashboard({ session, profile }) {
       .limit(10);
     
     if (recent) setRecentRequests(recent);
+  };
+
+  const handleShare = async (item) => {
+    const link = window.location.origin + '/dashboard/events?id=' + item.id;
+    const shareText = `Check out this event on Mechatronian Hub!\n\n*${item.title}*\n${item.description}\n\nLink: ${link}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: item.title,
+          text: shareText,
+          url: link
+        });
+        return;
+      } catch (err) {
+        console.log('Error sharing:', err);
+      }
+    }
+
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank');
   };
 
   const fetchEvents = async () => {
@@ -675,6 +695,9 @@ function AdminDashboard({ session, profile }) {
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                      <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} onClick={() => handleShare(event)}>
+                         <Share2 size={16} /> Share
+                      </button>
                       <button className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} onClick={() => handleViewTeams(event)}>
                         <Users size={16} /> View Teams
                       </button>

@@ -38,9 +38,9 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           sender: { 
             name: 'Mechatronian Admin', 
-            email: process.env.VITE_BREVO_SENDER_EMAIL || 'mraarusharma124@gmail.com' 
+            email: process.env.VITE_BREVO_SENDER_EMAIL || 'mraayush979@gmail.com' 
           },
-          to: [{ email: process.env.VITE_BREVO_SENDER_EMAIL || 'mraarusharma124@gmail.com', name: 'Mechatronian Admin' }],
+          to: [{ email: process.env.VITE_BREVO_SENDER_EMAIL || 'mraayush979@gmail.com', name: 'Mechatronian Admin' }],
           bcc: bccList,
           subject: subject,
           htmlContent: htmlContent

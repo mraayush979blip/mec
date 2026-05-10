@@ -24,18 +24,7 @@
   --gradient-purple: linear-gradient(135deg, #AF52DE 0%, #FF2D55 100%);
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg-primary: #f8f9fb;
-    --bg-glass: rgba(255, 255, 255, 0.75);
-    --text-primary: #121417;
-    --text-secondary: #5e6673;
-    --glass-border: rgba(255, 255, 255, 0.6);
-    --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.03);
-    --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.1);
-  }
-}
+
 
 * {
   margin: 0;
@@ -154,17 +143,7 @@ body {
   100% { background-position: -200% 0; }
 }
 
-@media (prefers-color-scheme: light) {
-  .skeleton {
-    background: linear-gradient(
-      90deg,
-      rgba(0, 0, 0, 0.03) 25%,
-      rgba(0, 0, 0, 0.08) 50%,
-      rgba(0, 0, 0, 0.03) 75%
-    );
-    background-size: 200% 100%;
-  }
-}
+
 
 .blob-2 {
   width: 50vw;

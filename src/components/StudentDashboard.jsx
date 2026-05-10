@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   LogOut, User, Calendar, PlusCircle, ArrowRight, Activity, 
   Users, Shield, CheckCircle, XCircle, Star, Search, 
-  MapPin, Link as LinkIcon, Briefcase, Globe, GitBranch, FileText, MessageCircle, Download, Smartphone, Trash2, Info
+  MapPin, Link as LinkIcon, Briefcase, Globe, GitBranch, FileText, MessageCircle, Download, Smartphone, Trash2, Info, Share2
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -140,6 +140,62 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
       details
     }]);
   };
+
+  const handleShare = async (item, type) => {
+    const isEvent = type === 'event';
+    const title = isEvent ? item.title : item.team_name;
+    const description = isEvent ? item.description : item.description;
+    const link = window.location.origin + '/dashboard/' + (isEvent ? 'events' : 'find_member') + '?id=' + item.id;
+    
+    const shareText = `Check out this ${isEvent ? 'event' : 'post'} on Mechatronian Hub!\n\n*${title}*\n${description}\n\nLink: ${link}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: title,
+          text: shareText,
+          url: link
+        });
+        return;
+      } catch (err) {
+        console.log('Error sharing:', err);
+      }
+    }
+
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank');
+  };
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const id = searchParams.get('id');
+    if (id && events.length > 0 && activeTab === 'events') {
+      setTimeout(() => {
+        const el = document.getElementById(`event-${id}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.style.transition = 'box-shadow 0.5s';
+          el.style.boxShadow = '0 0 30px rgba(175,82,222,0.6)';
+          setTimeout(() => el.style.boxShadow = '0 10px 30px rgba(0,0,0,0.2)', 3000);
+        }
+      }, 500);
+    }
+  }, [events, location.search, activeTab]);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const id = searchParams.get('id');
+    if (id && listings.length > 0 && activeTab === 'find_member') {
+      setTimeout(() => {
+        const el = document.getElementById(`listing-${id}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.style.transition = 'box-shadow 0.5s';
+          el.style.boxShadow = '0 0 30px rgba(0,122,255,0.6)';
+          setTimeout(() => el.style.boxShadow = 'var(--shadow-md)', 3000);
+        }
+      }, 500);
+    }
+  }, [listings, location.search, activeTab]);
 
   const tabs = ['events', 'discovery', 'find_member', 'activity', 'teams', 'profile'];
 
@@ -1030,7 +1086,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                 {events.map((event) => {
                   const myTeamForEvent = (myJoinedTeams || []).find(t => t.event_id === event.id && t.creator_id === profile.id);
                   return (
-                  <div key={event.id} className="glass-panel fade-in-up" style={{ 
+                  <div key={event.id} id={`event-${event.id}`} className="glass-panel fade-in-up" style={{ 
                     padding: '1.8rem', 
                     display: 'flex', 
                     flexDirection: 'column', 
@@ -1052,11 +1108,16 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                           {event.source_type === 'admin' ? 'Official Update' : <>Recruitment • <span style={{ color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleViewProfile(event.creator_id)}>{event.profiles?.full_name}</span></>}
                         </span>
                       </div>
-                      {event.expires_at && (
-                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#FF3B30', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                          <Activity size={12} /> {new Date(event.expires_at).toLocaleDateString()}
-                        </div>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                        <button className="btn" style={{ padding: '0.4rem', color: 'var(--text-secondary)', background: 'transparent' }} onClick={() => handleShare(event, 'event')}>
+                           <Share2 size={16} />
+                        </button>
+                        {event.expires_at && (
+                          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#FF3B30', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                            <Activity size={12} /> {new Date(event.expires_at).toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div style={{ marginTop: '0.5rem' }}>
@@ -1350,7 +1411,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
             ) : (
               <div style={{ display: 'grid', gap: '2rem' }}>
                 {listings.map((listing) => (
-                  <div key={listing.id} className="glass-panel fade-in-up" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  <div key={listing.id} id={`listing-${listing.id}`} className="glass-panel fade-in-up" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.8rem' }}>
@@ -1363,6 +1424,9 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <button className="btn" style={{ padding: '0.4rem', color: 'var(--text-secondary)', background: 'transparent' }} onClick={() => handleShare(listing, 'listing')}>
+                           <Share2 size={16} />
+                        </button>
                         {listing.creator_id === profile.id && (
                           <button 
                             className="btn btn-secondary" 
