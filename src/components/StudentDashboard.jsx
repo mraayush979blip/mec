@@ -8,6 +8,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Logo from './Logo';
 import NotificationBell from './NotificationBell';
+import TeamChat from './TeamChat';
 
 const Skeleton = ({ width, height, borderRadius = '12px', margin = '0' }) => (
   <div className="skeleton" style={{ width, height, borderRadius, margin }} />
@@ -147,6 +148,12 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   const [minExperience, setMinExperience] = useState('');
   const [listingDescription, setListingDescription] = useState('');
   const [isCreatingListing, setIsCreatingListing] = useState(false);
+
+  // Global Chat State
+  const [activeChat, setActiveChat] = useState(null); // { teamId, listingId, teamName }
+
+  // Global Search State
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Listings State
   const [listings, setListings] = useState([]);
@@ -877,7 +884,8 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   const fetchMyTeams = async () => {
     setLoading(true);
     try {
-      const { data: created } = await supabase
+      // 1. Event-based teams (Creator)
+      const { data: createdEventTeams } = await supabase
         .from('teams')
         .select(`
           *, 
@@ -890,7 +898,8 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
         `)
         .eq('creator_id', profile.id);
 
-      const { data: joined } = await supabase
+      // 2. Event-based teams (Joined)
+      const { data: joinedEventTeams } = await supabase
         .from('team_members')
         .select(`
           team_id,
@@ -906,12 +915,74 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
         `)
         .eq('user_id', profile.id);
 
+      // 3. Recruitment-based teams (Creator)
+      const { data: createdRecruitmentTeams } = await supabase
+        .from('team_listings')
+        .select(`
+          *,
+          join_requests(
+            applicant_id,
+            status,
+            profiles:profiles!join_requests_applicant_id_fkey(full_name, dev_role, skills, branch, whatsapp_no)
+          )
+        `)
+        .eq('creator_id', profile.id);
+
+      // 4. Recruitment-based teams (Joined)
+      const { data: joinedRequests } = await supabase
+        .from('join_requests')
+        .select(`
+          listing_id,
+          team_listings(
+            *,
+            profiles:profiles!team_listings_creator_id_fkey(full_name, dev_role, skills, branch, whatsapp_no),
+            join_requests(
+              applicant_id,
+              status,
+              profiles:profiles!join_requests_applicant_id_fkey(full_name, dev_role, skills, branch, whatsapp_no)
+            )
+          )
+        `)
+        .eq('applicant_id', profile.id)
+        .eq('status', 'approved');
+
       const combined = [
-        ...(created || []).map(t => ({ ...t, isLead: true })), 
-        ...(joined || []).map(j => ({ ...j.teams, isLead: false }))
+        ...(createdEventTeams || []).map(t => ({ ...t, isLead: true, type: 'event' })), 
+        ...(joinedEventTeams || []).map(j => ({ ...j.teams, isLead: false, type: 'event' })),
+        ...(createdRecruitmentTeams || []).map(t => ({ 
+          ...t, 
+          isLead: true, 
+          type: 'recruitment', 
+          team_name: t.team_name,
+          requirements: t.description,
+          team_members: [
+            { user_id: t.creator_id, role: 'leader', profiles: profile },
+            ...(t.join_requests || []).filter(r => r.status === 'approved').map(r => ({
+              user_id: r.applicant_id,
+              role: 'member',
+              profiles: r.profiles
+            }))
+          ]
+        })),
+        ...(joinedRequests || []).map(j => ({ 
+          ...j.team_listings, 
+          isLead: false, 
+          type: 'recruitment',
+          team_name: j.team_listings.team_name,
+          requirements: j.team_listings.description,
+          team_members: [
+            { user_id: j.team_listings.creator_id, role: 'leader', profiles: j.team_listings.profiles },
+            ...(j.team_listings.join_requests || []).filter(r => r.status === 'approved').map(r => ({
+              user_id: r.applicant_id,
+              role: 'member',
+              profiles: r.profiles
+            }))
+          ]
+        }))
       ];
+
       
-      const unique = Array.from(new Map((combined || []).filter(t=>t).map(t => [t.id, t])).values());
+      const unique = Array.from(new Map((combined || []).filter(t=>t).map(t => [t.id || t.listing_id, t])).values());
       setMyJoinedTeams(unique);
     } catch (err) { 
       console.error(err); 
@@ -2045,16 +2116,35 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                           {team.isLead ? <Shield size={12} style={{ marginRight: '4px' }} /> : <User size={12} style={{ marginRight: '4px' }} />}
                           {team.isLead ? 'Team Lead' : 'Collaborator'}
                         </span>
-                        <span className="badge badge-green" style={{ padding: '0.4rem 1rem' }}>{team.events?.title || 'General Mission'}</span>
+                        <span className="badge badge-green" style={{ padding: '0.4rem 1rem' }}>
+                          {team.type === 'event' ? (team.events?.title || 'Event Mission') : 'Recruitment Mission'}
+                        </span>
+                        <span className="badge badge-blue" style={{ padding: '0.4rem 1rem', opacity: 0.8 }}>
+                          {team.type === 'event' ? 'Event Team' : 'Recruitment Team'}
+                        </span>
                       </div>
                       <h2 style={{ fontSize: 'clamp(1.8rem, 5vw, 2.5rem)', fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>{team.team_name}</h2>
                       <p style={{ color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.95rem' }}>Mission established on {new Date(team.created_at).toLocaleDateString()}</p>
                     </div>
                     
-                    <div style={{ display: 'flex', gap: '0.8rem' }}>
-                       <button className="btn btn-secondary" style={{ padding: '0.8rem 1.2rem', borderRadius: '15px' }} onClick={() => handleTabChange('activity')}>
-                         Recruitment Activity
+                    <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+                       <button 
+                         className="btn btn-primary" 
+                         style={{ padding: '0.8rem 1.2rem', borderRadius: '15px', display: 'flex', alignItems: 'center', gap: '0.5rem' }} 
+                         onClick={() => setActiveChat({ 
+                           teamId: team.type === 'event' ? team.id : null, 
+                           listingId: team.type === 'recruitment' ? team.id : null, 
+                           teamName: team.team_name 
+                         })}
+                       >
+                         <MessageCircle size={18} />
+                         Open Team Chat
                        </button>
+                       {team.type === 'event' && (
+                         <button className="btn btn-secondary" style={{ padding: '0.8rem 1.2rem', borderRadius: '15px' }} onClick={() => handleTabChange('activity')}>
+                           Recruitment Activity
+                         </button>
+                       )}
                        {!team.isLead && (
                          <button className="btn" style={{ background: 'rgba(255, 59, 48, 0.1)', color: '#FF3B30', padding: '0.8rem 1.2rem', borderRadius: '15px', fontWeight: 700 }} onClick={() => handleLeaveTeam(team.id)}>
                            Leave Team
@@ -2294,6 +2384,16 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
       <footer className="container" style={{ padding: '2rem', textAlign: 'center', opacity: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
         &copy; 2026 Mechatronian Platform. Built for Excellence.
       </footer>
+      {/* TEAM CHAT MODAL */}
+      {activeChat && (
+        <TeamChat
+          teamId={activeChat.teamId}
+          listingId={activeChat.listingId}
+          teamName={activeChat.teamName}
+          currentUser={profile}
+          onClose={() => setActiveChat(null)}
+        />
+      )}
     </div>
   );
 }

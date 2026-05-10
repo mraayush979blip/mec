@@ -63,13 +63,14 @@ function AdminDashboard({ session, profile }) {
     }
   };
 
-  const tabs = ['overview', 'events', 'users', 'logs', 'emails', 'discovery', 'create'];
+  const tabs = ['overview', 'events', 'listings', 'users', 'logs', 'emails', 'discovery', 'create'];
   const [allUsers, setAllUsers] = useState([]);
   const [logs, setLogs] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewingUser, setViewingUser] = useState(null);
   const [userLogs, setUserLogs] = useState([]);
   const [emailLogs, setEmailLogs] = useState([]);
+  const [recruitmentListings, setRecruitmentListings] = useState([]);
 
   const fetchEmailLogs = async () => {
     setLoading(true);
@@ -139,6 +140,17 @@ function AdminDashboard({ session, profile }) {
     }
   };
 
+  const handleDeleteListing = async (listingId) => {
+    if (!window.confirm("Are you sure you want to delete this recruitment post? All associated join requests and chat messages will be lost.")) return;
+    const { error } = await supabase.from('team_listings').delete().eq('id', listingId);
+    if (!error) {
+      setRecruitmentListings(prev => prev.filter(l => l.id !== listingId));
+      alert("Recruitment post deleted successfully.");
+    } else {
+      alert("Error: " + error.message);
+    }
+  };
+
   const fetchActiveTabData = async () => {
     if (activeTab === 'overview' || activeTab === 'events') {
        await Promise.all([fetchEvents(), fetchStats()]);
@@ -150,6 +162,8 @@ function AdminDashboard({ session, profile }) {
        await fetchLogs();
     } else if (activeTab === 'emails') {
        await fetchEmailLogs();
+    } else if (activeTab === 'listings') {
+       await fetchRecruitmentListings();
     }
   };
 
@@ -158,7 +172,7 @@ function AdminDashboard({ session, profile }) {
       fetchExternalHackathons().catch(console.error);
     }
     if (activeTab === 'discovery') {
-      Promise.all([fetchEvents(), fetchStats()]).catch(console.error);
+      Promise.all([fetchEvents(), fetchStats(), fetchRecruitmentListings()]).catch(console.error);
     }
   };
 
@@ -204,6 +218,17 @@ function AdminDashboard({ session, profile }) {
 
     const { data } = await query;
     if (data) setLogs(data);
+    setLoading(false);
+  };
+
+  const fetchRecruitmentListings = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('team_listings')
+      .select('*, profiles:profiles!team_listings_creator_id_fkey(full_name), join_requests(applicant_id, status, profiles:profiles!join_requests_applicant_id_fkey(full_name))')
+      .order('created_at', { ascending: false });
+    
+    if (data) setRecruitmentListings(data);
     setLoading(false);
   };
 
@@ -798,7 +823,80 @@ function AdminDashboard({ session, profile }) {
           </div>
         )}
 
+        {activeTab === 'listings' && (
+          <div className="fade-in-up">
+            <h1 className="title" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>Recruitment Oversight</h1>
+            <p className="subtitle">Monitor student-led recruitment posts and the teams being formed.</p>
+
+            {loading ? (
+              <div style={{ display: 'grid', gap: '1.5rem', marginTop: '2rem' }}>
+                 {[1,2,3].map(i => <Skeleton key={i} width="100%" height="250px" borderRadius="24px" />)}
+              </div>
+            ) : recruitmentListings.length === 0 ? (
+              <div className="glass-panel" style={{ padding: '5rem 2rem', textAlign: 'center', marginTop: '2rem' }}>
+                <p style={{ color: 'var(--text-secondary)' }}>No recruitment posts found.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: '2rem', marginTop: '2rem' }}>
+                {recruitmentListings.map(listing => (
+                  <div key={listing.id} className="glass-panel" style={{ padding: '2rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem' }}>
+                          <span className="badge badge-purple">Recruitment Team</span>
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Posted by: <strong>{listing.profiles?.full_name}</strong></span>
+                        </div>
+                        <h2 style={{ fontSize: '1.8rem', fontWeight: 800 }}>{listing.team_name}</h2>
+                      </div>
+                      <button className="btn" style={{ background: 'rgba(255, 59, 48, 0.1)', color: '#FF3B30', padding: '0.6rem 1.2rem', borderRadius: '12px', fontWeight: 700 }} onClick={() => handleDeleteListing(listing.id)}>
+                        Delete Listing
+                      </button>
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
+                      <div>
+                        <p style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: '0.8rem' }}>Mission Description</p>
+                        <ExpandableText text={listing.description} maxLength={150} />
+                        
+                        <div style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.8rem', borderRadius: '12px' }}>
+                            <p style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)' }}>HACKATHON</p>
+                            <p style={{ fontSize: '0.9rem', fontWeight: 700 }}>{listing.hackathon_name}</p>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.8rem', borderRadius: '12px' }}>
+                            <p style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)' }}>MODE</p>
+                            <p style={{ fontSize: '0.9rem', fontWeight: 700 }}>{listing.mode}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="glass-panel" style={{ padding: '1.2rem', background: 'rgba(0,0,0,0.1)' }}>
+                        <p style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: '#34C759', marginBottom: '1rem' }}>Approved Collaborators ({listing.join_requests?.filter(r => r.status === 'approved').length || 0})</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                          {listing.join_requests?.filter(r => r.status === 'approved').length > 0 ? (
+                            listing.join_requests.filter(r => r.status === 'approved').map((req, idx) => (
+                              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: 'rgba(255,255,255,0.02)', padding: '0.6rem 1rem', borderRadius: '10px' }}>
+                                <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: 'white', fontWeight: 800 }}>
+                                  {req.profiles?.full_name?.charAt(0)}
+                                </div>
+                                <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{req.profiles?.full_name}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>No approved members yet.</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === 'events' && viewingTeamsFor && (
+
           <div className="fade-in-up">
             <button className="btn btn-secondary" style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', marginBottom: '1.5rem' }} onClick={() => setViewingTeamsFor(null)}>
               ← Back to Events
