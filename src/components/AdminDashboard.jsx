@@ -386,12 +386,59 @@ function AdminDashboard({ session, profile }) {
       fetchEvents();
       if (!editingEvent) {
         dispatchEmailsForEvent(title, description);
+        dispatchPushNotification(title, description);
+        dispatchInAppNotifications(title, description);
       }
       alert(editingEvent ? "Event updated successfully!" : "Event created successfully!");
     } else {
       alert("Error: " + error.message);
     }
   };
+
+  const dispatchPushNotification = async (eventTitle, eventDescription) => {
+    try {
+      const res = await fetch('/api/send-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `🚀 New Event: ${eventTitle}`,
+          body: eventDescription.slice(0, 100) + (eventDescription.length > 100 ? '...' : ''),
+          url: 'https://mechatronics-phi.vercel.app/dashboard/events'
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        console.warn('Push notification failed:', err);
+      } else {
+        console.log('Push notification sent successfully');
+      }
+    } catch (err) {
+      console.error('Push notification error:', err);
+    }
+  };
+
+  const dispatchInAppNotifications = async (eventTitle, eventDescription) => {
+    try {
+      const { data: students } = await supabase.from('profiles').select('id').eq('role', 'student');
+      if (!students || students.length === 0) return;
+
+      const notifications = students.map(s => ({
+        user_id: s.id,
+        title: `📢 New Event: ${eventTitle}`,
+        body: eventDescription.slice(0, 120),
+        link: '/dashboard/events',
+        type: 'event'
+      }));
+
+      // Batch insert in chunks of 100 to avoid payload limits
+      for (let i = 0; i < notifications.length; i += 100) {
+        await supabase.from('in_app_notifications').insert(notifications.slice(i, i + 100));
+      }
+    } catch (err) {
+      console.error('In-app notification dispatch error:', err);
+    }
+  };
+
 
   const dispatchEmailsForEvent = async (eventTitle, eventDescription) => {
     try {

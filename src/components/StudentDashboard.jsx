@@ -7,6 +7,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Logo from './Logo';
+import NotificationBell from './NotificationBell';
 
 const Skeleton = ({ width, height, borderRadius = '12px', margin = '0' }) => (
   <div className="skeleton" style={{ width, height, borderRadius, margin }} />
@@ -990,6 +991,19 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
     ));
     setIncomingRequests(prev => (prev || []).filter(req => req.id !== requestId));
 
+    // Notify the applicant via in-app notification
+    const notifTitle = status === 'approved' ? '✅ Request Approved!' : '❌ Request Declined';
+    const notifBody = status === 'approved'
+      ? `Your request to join the team has been approved. Welcome aboard!`
+      : `Your request to join the team was not accepted this time.`;
+    await supabase.from('in_app_notifications').insert([{
+      user_id: applicantId,
+      title: notifTitle,
+      body: notifBody,
+      link: '/dashboard/teams',
+      type: status === 'approved' ? 'approval' : 'general'
+    }]);
+
     alert(`Request ${status} successfully!`);
   };
 
@@ -1026,7 +1040,8 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
             ))}
           </nav>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+             <NotificationBell userId={profile?.id} />
              <button className="btn desktop-only" style={{ padding: '0.5rem', background: 'rgba(255, 59, 48, 0.1)', color: '#FF3B30', borderRadius: '12px' }} onClick={() => supabase.auth.signOut()}>
                <LogOut size={20} />
              </button>
