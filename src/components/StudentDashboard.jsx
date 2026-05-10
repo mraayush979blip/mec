@@ -153,8 +153,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
       try {
         await navigator.share({
           title: title,
-          text: shareText,
-          url: link
+          text: shareText
         });
         return;
       } catch (err) {

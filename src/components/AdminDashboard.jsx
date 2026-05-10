@@ -291,7 +291,7 @@ function AdminDashboard({ session, profile }) {
         await navigator.share({
           title: item.title,
           text: shareText,
-          url: link
+
         });
         return;
       } catch (err) {
