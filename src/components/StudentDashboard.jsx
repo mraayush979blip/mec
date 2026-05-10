@@ -12,6 +12,43 @@ const Skeleton = ({ width, height, borderRadius = '12px', margin = '0' }) => (
   <div className="skeleton" style={{ width, height, borderRadius, margin }} />
 );
 
+const ExpandableText = ({ text, maxLength = 180, style = {} }) => {
+  const [expanded, setExpanded] = React.useState(false);
+  if (!text) return null;
+
+  // Render with proper paragraph/newline support
+  const renderFormatted = (str) =>
+    str.split(/\n+/).map((para, i) => (
+      <p key={i} style={{ margin: i > 0 ? '0.6em 0 0 0' : '0' }}>{para}</p>
+    ));
+
+  const isLong = text.length > maxLength;
+  const displayText = isLong && !expanded ? text.slice(0, maxLength).trimEnd() : text;
+
+  return (
+    <div style={{ color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: '1.6', ...style }}>
+      {renderFormatted(displayText)}
+      {isLong && (
+        <button
+          onClick={() => setExpanded(e => !e)}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--accent)',
+            fontWeight: 700,
+            fontSize: '0.9rem',
+            cursor: 'pointer',
+            padding: '0.4rem 0 0 0',
+            display: 'block'
+          }}
+        >
+          {expanded ? 'Read less ▲' : '...Read more ▼'}
+        </button>
+      )}
+    </div>
+  );
+};
+
 const HelpTooltip = ({ text }) => {
   const showHelp = () => {
     alert(text);
@@ -1121,7 +1158,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
 
                     <div style={{ marginTop: '0.5rem' }}>
                       <h3 style={{ fontSize: '1.7rem', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.1, marginBottom: '0.6rem' }}>{event.title}</h3>
-                      <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: '1.5', opacity: 0.9 }}>{event.description}</p>
+                      <ExpandableText text={event.description} style={{ opacity: 0.9 }} />
                     </div>
 
                     {event.source_type === 'student' && (

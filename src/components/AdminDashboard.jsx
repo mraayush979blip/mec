@@ -7,6 +7,42 @@ const Skeleton = ({ width, height, borderRadius = '12px', margin = '0' }) => (
   <div className="skeleton" style={{ width, height, borderRadius, margin }} />
 );
 
+const ExpandableText = ({ text, maxLength = 180, style = {} }) => {
+  const [expanded, setExpanded] = React.useState(false);
+  if (!text) return null;
+
+  const renderFormatted = (str) =>
+    str.split(/\n+/).map((para, i) => (
+      <p key={i} style={{ margin: i > 0 ? '0.6em 0 0 0' : '0', color: 'var(--text-secondary)' }}>{para}</p>
+    ));
+
+  const isLong = text.length > maxLength;
+  const displayText = isLong && !expanded ? text.slice(0, maxLength).trimEnd() : text;
+
+  return (
+    <div style={{ fontSize: '0.95rem', lineHeight: '1.6', marginTop: '0.25rem', ...style }}>
+      {renderFormatted(displayText)}
+      {isLong && (
+        <button
+          onClick={() => setExpanded(e => !e)}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--accent)',
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            cursor: 'pointer',
+            padding: '0.4rem 0 0 0',
+            display: 'block'
+          }}
+        >
+          {expanded ? 'Read less ▲' : '...Read more ▼'}
+        </button>
+      )}
+    </div>
+  );
+};
+
 function AdminDashboard({ session, profile }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -691,7 +727,7 @@ function AdminDashboard({ session, profile }) {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div>
                         <h3 style={{ fontSize: '1.3rem', fontWeight: 600 }}>{event.title}</h3>
-                        <p style={{ color: 'var(--text-secondary)', marginTop: '0.25rem' }}>{event.description}</p>
+                        <ExpandableText text={event.description} />
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
