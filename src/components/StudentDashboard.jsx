@@ -271,7 +271,18 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
 
       if (error) throw error;
       
+      // Notify all students via email (Broadcast)
+      sendNotification({
+        userIds: null, // This tells the API to fetch all emails
+        broadcast: true,
+        title: `New Pulse from ${profile.full_name}`,
+        body: newPostContent.substring(0, 200) + (newPostContent.length > 200 ? '...' : ''),
+        url: 'https://mechatronics-phi.vercel.app/dashboard/feed',
+        type: 'activity'
+      });
+
       setNewPostContent('');
+
       setPostImage(null);
       fetchFeed();
       triggerHaptic(20);
@@ -1520,7 +1531,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                     border: '1px solid rgba(255,255,255,0.1)',
                     boxShadow: 'var(--shadow-md)'
                   }}>
-                    <div style={{ padding: '1.5rem 1.8rem' }}>
+                    <div style={{ padding: window.innerWidth < 600 ? '1rem' : '1.5rem 1.8rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                         <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'center' }}>
                           <div style={{ position: 'relative' }}>
@@ -1552,7 +1563,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                       </div>
 
                       <p style={{ 
-                        fontSize: '1.1rem', 
+                        fontSize: window.innerWidth < 600 ? '1rem' : '1.1rem', 
                         lineHeight: '1.7', 
                         color: 'var(--text-primary)',
                         marginBottom: '1.5rem', 
@@ -1570,12 +1581,13 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                     )}
 
                     <div style={{ 
-                      padding: '1.2rem 1.8rem', 
+                      padding: window.innerWidth < 600 ? '1rem' : '1.2rem 1.8rem', 
                       background: 'rgba(0,0,0,0.015)',
                       display: 'flex',
                       gap: '1.5rem',
                       alignItems: 'center'
                     }}>
+
                       <button 
                         className={`btn-like ${post.likes?.includes(session.user.id) ? 'active' : ''}`}
                         style={{ 

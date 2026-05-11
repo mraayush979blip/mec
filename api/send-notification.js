@@ -28,7 +28,6 @@ export default async function handler(req, res) {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
-
     // 2. Fetch Recipient Emails & Profiles
     let recipients = [];
     if (userIds && userIds.length > 0) {
@@ -40,6 +39,15 @@ export default async function handler(req, res) {
       if (!error && profiles) {
         recipients = profiles;
       }
+    } else if (userIds === null || (Array.isArray(userIds) && userIds.length === 0 && req.body.broadcast)) {
+      // Fetch ALL emails for broadcast/global posts
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('email, full_name');
+      
+      if (!error && profiles) {
+        recipients = profiles;
+      }
     }
 
     // 3. Send Push via OneSignal
@@ -47,22 +55,41 @@ export default async function handler(req, res) {
     
     // 4. Send Email via Gmail OAuth 2.0
     let emailResults = [];
+    let emailStatus = 'skipped';
+    
     if (recipients.length > 0) {
-      emailResults = await sendGmailEmails(
-        recipients, 
-        title, 
-        body, 
-        url, 
-        req.body.emailSubject, 
-        req.body.emailBody
-      );
+      try {
+        emailResults = await sendGmailEmails(
+          recipients, 
+          title, 
+          body, 
+          url, 
+          req.body.emailSubject, 
+          req.body.emailBody
+        );
+        emailStatus = 'success';
+      } catch (err) {
+        console.error('Gmail send error:', err);
+        emailStatus = 'failed';
+      }
     }
+
+    // 5. Log to email_logs for Admin
+    await supabase.from('email_logs').insert([{
+      subject: req.body.emailSubject || title,
+      body: req.body.emailBody || body,
+      recipient_count: recipients.length,
+      status: emailStatus,
+      type: req.body.type || 'notification',
+      event_title: title // So it shows up correctly in Admin Dashboard
+    }]);
 
 
     return res.status(200).json({ 
       success: true, 
       push: oneSignalResponse,
-      emailsSent: emailResults.length
+      emailsSent: recipients.length,
+      status: emailStatus
     });
 
   } catch (error) {
@@ -70,6 +97,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: error.message });
   }
 }
+
 
 async function sendOneSignalPush(title, body, userIds, url) {
   const apiKey = process.env.ONESIGNAL_REST_API_KEY;
@@ -156,23 +184,81 @@ async function sendGmailEmails(recipients, title, body, url, emailSubject, email
       to: user.email,
       subject: emailSubject || title,
       html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-          <h2 style="color: #007AFF;">${emailSubject || title}</h2>
-          <p>Hi ${user.full_name || 'Student'},</p>
-          <p style="font-size: 16px; line-height: 1.5; color: #333; white-space: pre-wrap;">${emailBody || body}</p>
-          <div style="margin-top: 30px; text-align: center;">
-            <a href="${url || 'https://mechatronics-phi.vercel.app/'}" 
-               style="background-color: #007AFF; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">
-               View on Dashboard
-            </a>
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            .container {
+              font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+              max-width: 600px;
+              margin: 0 auto;
+              background-color: #ffffff;
+              border-radius: 24px;
+              overflow: hidden;
+              box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+              border: 1px solid #f0f0f0;
+            }
+            .header {
+              background: linear-gradient(135deg, #007AFF 0%, #AF52DE 100%);
+              padding: 40px 20px;
+              text-align: center;
+              color: white;
+            }
+            .content {
+              padding: 40px 30px;
+              color: #1d1d1f;
+              line-height: 1.6;
+            }
+            .button {
+              display: inline-block;
+              padding: 16px 32px;
+              background: #007AFF;
+              color: #ffffff !important;
+              text-decoration: none;
+              border-radius: 16px;
+              font-weight: 700;
+              margin: 30px 0;
+              box-shadow: 0 10px 20px rgba(0,122,255,0.3);
+            }
+            .footer {
+              background-color: #f5f5f7;
+              padding: 20px;
+              text-align: center;
+              font-size: 12px;
+              color: #86868b;
+            }
+          </style>
+        </head>
+        <body style="margin: 0; padding: 20px; background-color: #fbfbfd;">
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">Mechatronian Pulse</h1>
+            </div>
+            <div class="content">
+              <h2 style="margin-top: 0; color: #007AFF; font-size: 22px;">${emailSubject || title}</h2>
+              <p style="font-size: 16px; color: #424245;">Hi <strong>${user.full_name || 'Student'}</strong>,</p>
+              <p style="font-size: 16px; white-space: pre-wrap;">${emailBody || body}</p>
+              
+              <div style="text-align: center;">
+                <a href="${url || 'https://mechatronics-phi.vercel.app/'}" class="button">View on Platform</a>
+              </div>
+              
+              <p style="font-size: 14px; color: #86868b; margin-top: 40px;">
+                You received this because you are a registered member of the Mechatronian Hub Community.
+              </p>
+            </div>
+            <div class="footer">
+              <p style="margin: 0;">&copy; 2026 Mechatronian Hub. All rights reserved.</p>
+              <p style="margin: 5px 0 0 0;">Designed for the next generation of engineers.</p>
+            </div>
           </div>
-          <hr style="margin-top: 40px; border: 0; border-top: 1px solid #eee;" />
-          <p style="font-size: 12px; color: #999; text-align: center;">
-            Mechatronian Hub Platform - Automated Notification
-          </p>
-        </div>
+        </body>
+        </html>
       `
     };
+
 
     return transporter.sendMail(mailOptions);
   });
