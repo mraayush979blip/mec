@@ -1568,7 +1568,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
               </div>
 
               {/* REIMAGINED MOBILE FEED */}
-              <div style={{ display: 'grid', gap: window.innerWidth < 600 ? '0.5rem' : '2rem' }}>
+              <div style={{ display: 'grid', gap: window.innerWidth < 600 ? '0.8rem' : '2rem' }}>
                 {feedPosts.length === 0 ? (
                   <div className="glass-panel" style={{ padding: '8rem 2rem', textAlign: 'center' }}>
                     <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🛰️</div>
@@ -1578,23 +1578,23 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                   <div key={post.id} className="glass-panel fade-in-up" style={{ 
                     padding: '0', 
                     overflow: 'hidden',
-                    border: window.innerWidth < 600 ? 'none' : '1px solid rgba(255,255,255,0.1)',
-                    borderBottom: window.innerWidth < 600 ? '1px solid rgba(0,0,0,0.05)' : '1px solid rgba(255,255,255,0.1)',
+                    border: '1px solid var(--glass-border)',
                     boxShadow: window.innerWidth < 600 ? 'none' : 'var(--shadow-md)',
-                    borderRadius: window.innerWidth < 600 ? '0' : '24px',
-                    margin: window.innerWidth < 600 ? '0 -2rem' : '0',
-                    background: window.innerWidth < 600 ? 'white' : 'rgba(255,255,255,0.7)'
+                    borderRadius: window.innerWidth < 600 ? '16px' : '24px',
+                    margin: window.innerWidth < 600 ? '0' : '0',
+                    background: 'var(--bg-glass)',
+                    backdropFilter: 'blur(20px)'
                   }}>
-                    <div style={{ padding: window.innerWidth < 600 ? '1rem' : '1.5rem 1.8rem' }}>
+                    <div style={{ padding: window.innerWidth < 600 ? '1.2rem' : '1.5rem 1.8rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                         <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
                             <img 
                               src={post.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${post.profiles?.full_name}&background=random`} 
-                              style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }}
+                              style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--glass-border)' }}
                               alt="avatar"
                             />
                           <div>
-                            <h4 style={{ fontWeight: 800, fontSize: '0.95rem', margin: 0 }}>{post.profiles?.full_name}</h4>
+                            <h4 style={{ fontWeight: 800, fontSize: '0.95rem', margin: 0, color: 'var(--text-primary)' }}>{post.profiles?.full_name}</h4>
                             <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
                               {post.profiles?.dev_role?.split(' ')[0] || 'Member'} • {new Date(post.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                             </p>
@@ -1622,7 +1622,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                     </div>
 
                     {post.image_url && (
-                      <div style={{ position: 'relative', width: '100%', overflow: 'hidden', background: '#f8f8f8' }}>
+                      <div style={{ position: 'relative', width: '100%', overflow: 'hidden', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid var(--glass-border)', borderBottom: '1px solid var(--glass-border)' }}>
                         <img src={post.image_url} style={{ width: '100%', display: 'block' }} alt="post content" />
                       </div>
                     )}
@@ -1631,8 +1631,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                       padding: '0.8rem 1rem', 
                       display: 'flex',
                       gap: '1.2rem',
-                      alignItems: 'center',
-                      borderBottom: window.innerWidth < 600 ? 'none' : '1px solid rgba(0,0,0,0.03)'
+                      alignItems: 'center'
                     }}>
                       <button 
                         onClick={() => handleLikePost(post.id, post.likes)}
@@ -1656,15 +1655,15 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                       </button>
                     </div>
 
-                    {/* COMMENTS SECTION - HIDDEN BY DEFAULT ON MOBILE TO SAVE SPACE */}
+                    {/* COMMENTS SECTION */}
                     {(window.innerWidth >= 600 || commentInputs[`show_${post.id}`]) && (
                     <div style={{ padding: '0 1rem 1rem 1rem' }}>
-                      <div style={{ borderTop: window.innerWidth < 600 ? 'none' : '1px solid rgba(0,0,0,0.05)', paddingTop: '0.8rem' }}>
+                      <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '0.8rem' }}>
                          {/* COMMENTS LIST */}
                          {post.comments?.length > 0 && (
                            <div style={{ display: 'grid', gap: '0.6rem', marginBottom: '1rem' }}>
                               {post.comments.map(c => (
-                                <div key={c.id} style={{ background: 'rgba(0,0,0,0.02)', padding: '0.6rem 0.8rem', borderRadius: '12px', fontSize: '0.85rem' }}>
+                                <div key={c.id} style={{ background: 'rgba(255,255,255,0.03)', padding: '0.6rem 0.8rem', borderRadius: '12px', fontSize: '0.85rem', border: '1px solid var(--glass-border)' }}>
                                    <span style={{ fontWeight: 800, color: 'var(--accent)', marginRight: '0.4rem' }}>{c.user_name?.split(' ')[0]}</span>
                                    <span style={{ color: 'var(--text-primary)' }}>{c.text}</span>
                                 </div>
@@ -1681,7 +1680,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                               value={commentInputs[post.id] || ''}
                               onChange={(e) => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
                               onKeyDown={(e) => e.key === 'Enter' && handleAddComment(post.id, post.comments)}
-                              style={{ padding: '0.5rem 0.8rem', fontSize: '0.85rem', borderRadius: '100px', background: 'rgba(0,0,0,0.03)', border: 'none' }}
+                              style={{ padding: '0.5rem 0.8rem', fontSize: '0.85rem', borderRadius: '100px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}
                             />
                             <button 
                               className="btn btn-primary" 
@@ -1698,6 +1697,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                   </div>
                 ))}
               </div>
+
             </div>
           </div>
         )}
