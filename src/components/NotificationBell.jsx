@@ -146,7 +146,7 @@ export default function NotificationBell({ userId }) {
               <p style={{ fontWeight: 800, fontSize: '1rem' }}>Notifications</p>
               {unreadCount > 0 && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', fontWeight: 600 }}>{unreadCount} unread</p>}
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
               {unreadCount > 0 && (
                 <button onClick={markAllRead} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>
                   Mark all read
@@ -157,8 +157,12 @@ export default function NotificationBell({ userId }) {
                   Clear
                 </button>
               )}
+              <button onClick={() => setOpen(false)} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'var(--text-secondary)', padding: '0.3rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={18} />
+              </button>
             </div>
           </div>
+
 
           {/* List */}
           <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
