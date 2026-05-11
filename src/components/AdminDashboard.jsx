@@ -101,9 +101,17 @@ function AdminDashboard({ session, profile }) {
   const [minTeamSize, setMinTeamSize] = useState(4);
   const [maxTeamSize, setMaxTeamSize] = useState(6);
 
-  // States for viewing teams
   const [viewingTeamsFor, setViewingTeamsFor] = useState(null);
   const [eventTeams, setEventTeams] = useState([]);
+
+  // Broadcast Management
+  const [broadcasts, setBroadcasts] = useState([]);
+  const [editingBroadcast, setEditingBroadcast] = useState(null);
+
+  const fetchBroadcasts = async () => {
+    const { data } = await supabase.from('broadcasts').select('*').order('created_at', { ascending: false });
+    if (data) setBroadcasts(data);
+  };
 
   // Discovery Management State
   const [externalHackathons, setExternalHackathons] = useState([]);
@@ -164,7 +172,7 @@ function AdminDashboard({ session, profile }) {
     } else if (activeTab === 'emails') {
        await fetchEmailLogs();
     } else if (activeTab === 'broadcast') {
-       // Broadcast is handled locally for now or via a table
+       await fetchBroadcasts();
     } else if (activeTab === 'listings') {
        await fetchRecruitmentListings();
     }
@@ -716,40 +724,98 @@ function AdminDashboard({ session, profile }) {
         
         {activeTab === 'broadcast' && (
           <div className="fade-in-up">
-            <h1 className="title" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>Global Broadcast</h1>
-            <p className="subtitle">Send an announcement that appears as a premium banner for all students.</p>
+            <h1 className="title" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>Global Broadcasts</h1>
+            <p className="subtitle">Manage urgent announcements that appear at the top of every student's dashboard.</p>
             
-            <div className="glass-panel" style={{ padding: '2.5rem', marginTop: '2rem' }}>
+            <div className="glass-panel" style={{ padding: '2.5rem', marginTop: '2rem', marginBottom: '2.5rem' }}>
               <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', marginBottom: '2rem' }}>
                 <div style={{ background: 'var(--accent)', color: 'white', padding: '1rem', borderRadius: '20px', boxShadow: '0 10px 20px rgba(0,122,255,0.2)' }}>
                   <Globe size={32} />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: '1.4rem', fontWeight: 800 }}>Create Announcement</h3>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>This will be visible at the top of every student's dashboard.</p>
+                  <h3 style={{ fontSize: '1.4rem', fontWeight: 800 }}>{editingBroadcast ? 'Edit Broadcast' : 'Create New Broadcast'}</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Target all students with a high-visibility banner.</p>
                 </div>
               </div>
 
-              <form onSubmit={(e) => {
+              <form onSubmit={async (e) => {
                 e.preventDefault();
-                alert("Broadcast sent! All students will see this banner on their next login.");
+                const bTitle = e.target.title.value;
+                const bBody = e.target.body.value;
+                
+                if (editingBroadcast) {
+                  const { error } = await supabase.from('broadcasts').update({ title: bTitle, body: bBody }).eq('id', editingBroadcast.id);
+                  if (!error) {
+                    alert("Broadcast updated!");
+                    setEditingBroadcast(null);
+                    e.target.reset();
+                    fetchBroadcasts();
+                  }
+                } else {
+                  const { error } = await supabase.from('broadcasts').insert([{ title: bTitle, body: bBody, is_active: true }]);
+                  if (!error) {
+                    alert("Broadcast live!");
+                    e.target.reset();
+                    fetchBroadcasts();
+                  }
+                }
               }} style={{ display: 'grid', gap: '1.5rem' }}>
                 <div className="input-group">
                   <label className="input-label">Headline</label>
-                  <input className="glass-input" placeholder="e.g. Workshop Registration Closing Soon!" required />
+                  <input name="title" className="glass-input" defaultValue={editingBroadcast?.title || ''} placeholder="e.g. Workshop Registration Closing Soon!" required />
                 </div>
                 <div className="input-group">
                   <label className="input-label">Short Description</label>
-                  <textarea className="glass-input" rows="3" placeholder="Explain the importance of this alert..." required></textarea>
+                  <textarea name="body" className="glass-input" rows="3" defaultValue={editingBroadcast?.body || ''} placeholder="Explain the importance of this alert..." required></textarea>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <button type="button" className="btn btn-secondary" onClick={() => handleTabChange('overview')}>Cancel</button>
-                  <button type="submit" className="btn btn-primary">Send Broadcast Now</button>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  {editingBroadcast && <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setEditingBroadcast(null)}>Cancel Edit</button>}
+                  <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>{editingBroadcast ? 'Update Broadcast' : 'Publish Broadcast Now'}</button>
                 </div>
               </form>
             </div>
+
+            <div style={{ display: 'grid', gap: '1rem' }}>
+               <h2 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '0.5rem' }}>Live & Past Broadcasts</h2>
+               {broadcasts.length === 0 ? (
+                 <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No broadcasts found.</div>
+               ) : broadcasts.map(b => (
+                 <div key={b.id} className="glass-panel" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: b.is_active ? '4px solid #34C759' : '4px solid var(--glass-border)' }}>
+                   <div>
+                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.4rem' }}>
+                        <span style={{ fontWeight: 800, fontSize: '1.1rem' }}>{b.title}</span>
+                        <span className={`badge ${b.is_active ? 'badge-green' : 'badge-gray'}`} style={{ fontSize: '0.65rem' }}>{b.is_active ? 'ACTIVE' : 'INACTIVE'}</span>
+                     </div>
+                     <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', maxWidth: '500px' }}>{b.body}</p>
+                   </div>
+                   <div style={{ display: 'flex', gap: '0.8rem' }}>
+                      <button className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={async () => {
+                         await supabase.from('broadcasts').update({ is_active: !b.is_active }).eq('id', b.id);
+                         fetchBroadcasts();
+                      }}>
+                        {b.is_active ? 'Deactivate' : 'Activate'}
+                      </button>
+                      <button className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => {
+                        setEditingBroadcast(b);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}>
+                        Edit
+                      </button>
+                      <button className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', color: '#FF3B30' }} onClick={async () => {
+                        if (confirm("Delete this broadcast?")) {
+                          await supabase.from('broadcasts').delete().eq('id', b.id);
+                          fetchBroadcasts();
+                        }
+                      }}>
+                        Delete
+                      </button>
+                   </div>
+                 </div>
+               ))}
+            </div>
           </div>
         )}
+
 
         {activeTab === 'discovery' && (
            <div className="fade-in-up">

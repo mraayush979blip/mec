@@ -617,18 +617,32 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
 
     setEvents(combined);
     
-    // Set latest admin event as broadcast if no dedicated broadcast table exists
-    const latestAdmin = combined.find(e => e.source_type === 'admin');
-    if (latestAdmin && !activeBroadcast) {
-      setActiveBroadcast({
-        id: latestAdmin.id,
-        title: latestAdmin.title,
-        body: latestAdmin.description,
-        type: 'event'
-      });
+    // Fetch latest dedicated broadcast
+    const { data: bData } = await supabase
+      .from('broadcasts')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (bData) {
+      setActiveBroadcast(bData);
+    } else {
+      // Fallback to latest admin event if no dedicated broadcast
+      const latestAdmin = combined.find(e => e.source_type === 'admin');
+      if (latestAdmin) {
+        setActiveBroadcast({
+          id: latestAdmin.id,
+          title: latestAdmin.title,
+          body: latestAdmin.description,
+          type: 'event'
+        });
+      }
     }
     
     setLoading(false);
+
   };
 
   const handleVote = async (eventId, option) => {
