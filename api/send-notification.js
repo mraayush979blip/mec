@@ -9,19 +9,26 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { title, body, userIds, url, type } = req.body;
+  const { title, body, userIds, url } = req.body;
 
   if (!title || !body) {
     return res.status(400).json({ error: 'Title and body are required' });
   }
 
-  // 1. Initialize Supabase (to fetch recipient emails)
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
+  // 1. Validate Environment Variables
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error('Supabase configuration missing');
+    return res.status(500).json({ error: 'Server configuration error: Supabase keys missing' });
+  }
+
+  // Initialize Supabase
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
+
     // 2. Fetch Recipient Emails & Profiles
     let recipients = [];
     if (userIds && userIds.length > 0) {
@@ -120,10 +127,14 @@ async function sendGmailEmails(recipients, title, body, url, emailSubject, email
 
   const accessToken = await new Promise((resolve, reject) => {
     oauth2Client.getAccessToken((err, token) => {
-      if (err) reject("Failed to create access token :(");
+      if (err) {
+        console.error("Gmail Auth Error:", err);
+        reject("Failed to create access token: " + err.message);
+      }
       resolve(token);
     });
   });
+
 
   const transporter = nodemailer.createTransport({
     service: "gmail",
