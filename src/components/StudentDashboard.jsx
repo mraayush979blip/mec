@@ -1384,6 +1384,27 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
               filter: 'blur(20px)'
             }}></div>
             
+            <button 
+              onClick={() => setShowBroadcast(false)}
+              style={{ 
+                position: 'absolute', 
+                top: '12px', 
+                right: '12px', 
+                background: 'rgba(255,255,255,0.05)', 
+                border: 'none', 
+                color: 'var(--text-secondary)', 
+                cursor: 'pointer', 
+                padding: '0.4rem',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 2
+              }}
+            >
+              <X size={16} />
+            </button>
+            
             <div style={{ 
               width: '48px', height: '48px', borderRadius: '16px', background: 'var(--accent)', 
               display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0,
@@ -1415,13 +1436,8 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
               >
                 View Details
               </button>
-              <button 
-                onClick={() => setShowBroadcast(false)}
-                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.5rem' }}
-              >
-                <XCircle size={20} />
-              </button>
             </div>
+
           </div>
         )}
         
@@ -1429,7 +1445,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
         {/* ACTIVITY FEED TAB */}
         {activeTab === 'feed' && (
           <div className="fade-in-up" style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <div style={{ textAlign: 'center', marginBottom: '3rem' }} className="desktop-only">
                <div style={{ 
                  display: 'inline-flex', alignItems: 'center', gap: '0.8rem', 
                  background: 'var(--accent-light)', padding: '0.6rem 1.2rem', 
@@ -1443,82 +1459,116 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                <p className="subtitle">Discover what your peers are building across the platform.</p>
             </div>
 
-            <div style={{ display: 'grid', gap: '2.5rem' }}>
-              {/* PREMIUM POST CREATOR */}
+            <div style={{ display: 'grid', gap: window.innerWidth < 600 ? '1rem' : '2.5rem' }}>
+              {/* EXPANDABLE POST CREATOR */}
               <div className="glass-panel" style={{ 
-                padding: '2rem', 
+                padding: window.innerWidth < 600 ? '1rem' : '2rem', 
                 border: '1px solid rgba(255,255,255,0.2)',
                 boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-                position: 'relative',
-                overflow: 'hidden'
+                borderRadius: window.innerWidth < 600 ? '0' : '24px',
+                margin: window.innerWidth < 600 ? '0 -2rem' : '0'
               }}>
-                <div style={{ display: 'flex', gap: '1.2rem' }}>
-                   <img 
-                    src={profile?.avatar_url || `https://ui-avatars.com/api/?name=${profile?.full_name}&background=random`} 
-                    style={{ width: '48px', height: '48px', borderRadius: '14px', objectFit: 'cover' }}
-                    alt="user"
-                  />
-                  <div style={{ flex: 1 }}>
-                    <textarea 
-                      className="glass-input" 
-                      placeholder="Share a breakthrough or ask a question..." 
-                      value={newPostContent}
-                      onChange={(e) => setNewPostContent(e.target.value)}
-                      style={{ 
-                        minHeight: '120px', 
-                        background: 'rgba(0,0,0,0.02)', 
-                        border: 'none',
-                        fontSize: '1.1rem',
-                        padding: '1rem'
-                      }}
+                {!isPosting && !postImage && !newPostContent && !commentInputs['creator_expanded'] ? (
+                  <div 
+                    onClick={() => setCommentInputs(prev => ({ ...prev, 'creator_expanded': true }))}
+                    style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer' }}
+                  >
+                    <img 
+                      src={profile?.avatar_url || `https://ui-avatars.com/api/?name=${profile?.full_name}&background=random`} 
+                      style={{ width: '40px', height: '40px', borderRadius: '12px', objectFit: 'cover' }}
+                      alt="user"
                     />
-                    
-                    {postImage && (
-                      <div style={{ 
-                        marginTop: '1rem', position: 'relative', borderRadius: '16px', 
-                        overflow: 'hidden', border: '1px solid var(--accent-light)' 
-                      }}>
-                        <img src={URL.createObjectURL(postImage)} style={{ width: '100%', height: '200px', objectFit: 'cover' }} alt="preview" />
-                        <button 
-                          onClick={() => setPostImage(null)}
-                          style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer' }}
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    )}
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '1.5rem' }}>
-                      <label style={{ 
-                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.6rem', 
-                        color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.9rem',
-                        transition: 'color 0.3s'
-                      }} className="hover-accent">
-                        <Camera size={22} />
-                        <span>Add Photo</span>
-                        <input 
-                          type="file" 
-                          accept="image/*" 
-                          style={{ display: 'none' }} 
-                          onChange={(e) => setPostImage(e.target.files[0])}
-                        />
-                      </label>
-                      
-                      <button 
-                        className="btn btn-primary" 
-                        onClick={handleCreatePost} 
-                        disabled={isPosting || !newPostContent.trim()}
-                        style={{ padding: '0.8rem 2rem', borderRadius: '14px', fontWeight: 800 }}
-                      >
-                        {isPosting ? 'Publishing...' : 'Publish Pulse'}
-                      </button>
+                    <div style={{ 
+                      flex: 1, background: 'rgba(0,0,0,0.03)', padding: '0.8rem 1.2rem', 
+                      borderRadius: '100px', color: 'var(--text-secondary)', fontSize: '0.95rem'
+                    }}>
+                      What's on your mind, {profile?.full_name?.split(' ')[0]}?
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: '1.2rem' }}>
+                    <img 
+                      src={profile?.avatar_url || `https://ui-avatars.com/api/?name=${profile?.full_name}&background=random`} 
+                      style={{ width: '48px', height: '48px', borderRadius: '14px', objectFit: 'cover', display: window.innerWidth < 600 ? 'none' : 'block' }}
+                      alt="user"
+                    />
+                    <div style={{ flex: 1 }}>
+                      <textarea 
+                        autoFocus
+                        className="glass-input" 
+                        placeholder="Share a breakthrough or ask a question..." 
+                        value={newPostContent}
+                        onChange={(e) => setNewPostContent(e.target.value)}
+                        style={{ 
+                          minHeight: '120px', 
+                          background: 'rgba(0,0,0,0.02)', 
+                          border: 'none',
+                          fontSize: '1.1rem',
+                          padding: '1rem'
+                        }}
+                      />
+                      
+                      {postImage && (
+                        <div style={{ 
+                          marginTop: '1rem', position: 'relative', borderRadius: '16px', 
+                          overflow: 'hidden', border: '1px solid var(--accent-light)' 
+                        }}>
+                          <img src={URL.createObjectURL(postImage)} style={{ width: '100%', height: '200px', objectFit: 'cover' }} alt="preview" />
+                          <button 
+                            onClick={() => setPostImage(null)}
+                            style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer' }}
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '1.5rem' }}>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                          <label style={{ 
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.6rem', 
+                            color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.9rem'
+                          }}>
+                            <Camera size={22} />
+                            <span className="desktop-only">Add Photo</span>
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              style={{ display: 'none' }} 
+                              onChange={(e) => setPostImage(e.target.files[0])}
+                            />
+                          </label>
+                          <button 
+                            onClick={() => {
+                              setCommentInputs(prev => ({ ...prev, 'creator_expanded': false }));
+                              setNewPostContent('');
+                              setPostImage(null);
+                            }}
+                            style={{ background: 'none', border: 'none', color: '#FF3B30', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                        
+                        <button 
+                          className="btn btn-primary" 
+                          onClick={async () => {
+                            await handleCreatePost();
+                            setCommentInputs(prev => ({ ...prev, 'creator_expanded': false }));
+                          }} 
+                          disabled={isPosting || !newPostContent.trim()}
+                          style={{ padding: '0.8rem 2rem', borderRadius: '14px', fontWeight: 800 }}
+                        >
+                          {isPosting ? 'Publishing...' : 'Publish'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* ENHANCED POST LIST */}
-              <div style={{ display: 'grid', gap: '2rem' }}>
+              {/* REIMAGINED MOBILE FEED */}
+              <div style={{ display: 'grid', gap: window.innerWidth < 600 ? '0.5rem' : '2rem' }}>
                 {feedPosts.length === 0 ? (
                   <div className="glass-panel" style={{ padding: '8rem 2rem', textAlign: 'center' }}>
                     <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🛰️</div>
@@ -1528,106 +1578,94 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                   <div key={post.id} className="glass-panel fade-in-up" style={{ 
                     padding: '0', 
                     overflow: 'hidden',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    boxShadow: 'var(--shadow-md)'
+                    border: window.innerWidth < 600 ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                    borderBottom: window.innerWidth < 600 ? '1px solid rgba(0,0,0,0.05)' : '1px solid rgba(255,255,255,0.1)',
+                    boxShadow: window.innerWidth < 600 ? 'none' : 'var(--shadow-md)',
+                    borderRadius: window.innerWidth < 600 ? '0' : '24px',
+                    margin: window.innerWidth < 600 ? '0 -2rem' : '0',
+                    background: window.innerWidth < 600 ? 'white' : 'rgba(255,255,255,0.7)'
                   }}>
                     <div style={{ padding: window.innerWidth < 600 ? '1rem' : '1.5rem 1.8rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                        <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'center' }}>
-                          <div style={{ position: 'relative' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                        <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
                             <img 
                               src={post.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${post.profiles?.full_name}&background=random`} 
-                              style={{ width: '52px', height: '52px', borderRadius: '16px', objectFit: 'cover', border: '2px solid white' }}
+                              style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }}
                               alt="avatar"
                             />
-                            <div style={{ 
-                              position: 'absolute', bottom: '-4px', right: '-4px', 
-                              width: '18px', height: '18px', background: '#34C759', 
-                              border: '3px solid white', borderRadius: '50%' 
-                            }}></div>
-                          </div>
                           <div>
-                            <h4 style={{ fontWeight: 800, fontSize: '1.1rem', marginBottom: '0.2rem' }}>{post.profiles?.full_name}</h4>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--accent)', fontWeight: 700 }}>
-                              {post.profiles?.dev_role || 'Mechatronian'} • <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{new Date(post.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                            <h4 style={{ fontWeight: 800, fontSize: '0.95rem', margin: 0 }}>{post.profiles?.full_name}</h4>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
+                              {post.profiles?.dev_role?.split(' ')[0] || 'Member'} • {new Date(post.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                             </p>
                           </div>
                         </div>
                         <button 
                           className="btn-icon" 
-                          style={{ background: 'rgba(0,0,0,0.03)', width: '40px', height: '40px' }}
+                          style={{ background: 'transparent', width: '32px', height: '32px' }}
                           onClick={() => handleShare(post, 'post')}
                         >
-                          <Share2 size={18} />
+                          <Share2 size={18} color="var(--text-secondary)" />
                         </button>
                       </div>
 
                       <p style={{ 
-                        fontSize: window.innerWidth < 600 ? '1rem' : '1.1rem', 
-                        lineHeight: '1.7', 
+                        fontSize: window.innerWidth < 600 ? '0.95rem' : '1.1rem', 
+                        lineHeight: '1.6', 
                         color: 'var(--text-primary)',
-                        marginBottom: '1.5rem', 
+                        marginBottom: '1rem', 
                         whiteSpace: 'pre-wrap',
-                        fontWeight: 500
+                        fontWeight: 450
                       }}>
                         {post.content}
                       </p>
                     </div>
 
                     {post.image_url && (
-                      <div style={{ position: 'relative', maxHeight: '500px', overflow: 'hidden', background: '#000' }}>
-                        <img src={post.image_url} style={{ width: '100%', display: 'block', opacity: 0.95 }} alt="post content" />
+                      <div style={{ position: 'relative', width: '100%', overflow: 'hidden', background: '#f8f8f8' }}>
+                        <img src={post.image_url} style={{ width: '100%', display: 'block' }} alt="post content" />
                       </div>
                     )}
 
                     <div style={{ 
-                      padding: window.innerWidth < 600 ? '1rem' : '1.2rem 1.8rem', 
-                      background: 'rgba(0,0,0,0.015)',
+                      padding: '0.8rem 1rem', 
                       display: 'flex',
-                      gap: '1.5rem',
-                      alignItems: 'center'
+                      gap: '1.2rem',
+                      alignItems: 'center',
+                      borderBottom: window.innerWidth < 600 ? 'none' : '1px solid rgba(0,0,0,0.03)'
                     }}>
-
                       <button 
-                        className={`btn-like ${post.likes?.includes(session.user.id) ? 'active' : ''}`}
-                        style={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: '0.8rem',
-                          background: post.likes?.includes(session.user.id) ? 'var(--accent)' : 'white',
-                          color: post.likes?.includes(session.user.id) ? 'white' : 'var(--text-primary)',
-                          padding: '0.6rem 1.2rem',
-                          borderRadius: '12px',
-                          border: '1px solid rgba(0,0,0,0.05)',
-                          boxShadow: post.likes?.includes(session.user.id) ? '0 8px 20px rgba(0,122,255,0.3)' : 'none',
-                          cursor: 'pointer',
-                          transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-                        }}
                         onClick={() => handleLikePost(post.id, post.likes)}
                         disabled={isLikeLoading[post.id]}
+                        style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', padding: '0.4rem' }}
                       >
                         <Heart 
-                          size={20} 
-                          fill={post.likes?.includes(session.user.id) ? 'white' : 'none'} 
-                          style={{ transition: 'transform 0.3s' }}
+                          size={22} 
+                          fill={post.likes?.includes(session.user.id) ? '#FF3B30' : 'none'} 
+                          color={post.likes?.includes(session.user.id) ? '#FF3B30' : 'var(--text-secondary)'} 
                         />
-                        <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>{post.likes?.length || 0}</span>
+                        {post.likes?.length > 0 && <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{post.likes.length}</span>}
                       </button>
                       
-                      <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>
-                        {post.likes?.length > 0 ? `${post.likes.length} mechatronians liked this` : 'Be the first to like'}
-                      </div>
+                      <button 
+                        onClick={() => setCommentInputs(prev => ({ ...prev, [`show_${post.id}`]: !prev[`show_${post.id}`] }))}
+                        style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', padding: '0.4rem' }}
+                      >
+                        <MessageCircle size={22} color="var(--text-secondary)" />
+                        {post.comments?.length > 0 && <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{post.comments.length}</span>}
+                      </button>
                     </div>
 
-                    {/* COMMENTS SECTION */}
-                    <div style={{ padding: '0 1.8rem 1.8rem 1.8rem' }}>
-                      <div style={{ borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '1.2rem' }}>
+                    {/* COMMENTS SECTION - HIDDEN BY DEFAULT ON MOBILE TO SAVE SPACE */}
+                    {(window.innerWidth >= 600 || commentInputs[`show_${post.id}`]) && (
+                    <div style={{ padding: '0 1rem 1rem 1rem' }}>
+                      <div style={{ borderTop: window.innerWidth < 600 ? 'none' : '1px solid rgba(0,0,0,0.05)', paddingTop: '0.8rem' }}>
                          {/* COMMENTS LIST */}
                          {post.comments?.length > 0 && (
-                           <div style={{ display: 'grid', gap: '0.8rem', marginBottom: '1.2rem' }}>
+                           <div style={{ display: 'grid', gap: '0.6rem', marginBottom: '1rem' }}>
                               {post.comments.map(c => (
-                                <div key={c.id} style={{ background: 'rgba(0,0,0,0.025)', padding: '0.8rem 1rem', borderRadius: '12px', fontSize: '0.9rem' }}>
-                                   <span style={{ fontWeight: 800, color: 'var(--accent)', marginRight: '0.5rem' }}>{c.user_name}</span>
+                                <div key={c.id} style={{ background: 'rgba(0,0,0,0.02)', padding: '0.6rem 0.8rem', borderRadius: '12px', fontSize: '0.85rem' }}>
+                                   <span style={{ fontWeight: 800, color: 'var(--accent)', marginRight: '0.4rem' }}>{c.user_name?.split(' ')[0]}</span>
                                    <span style={{ color: 'var(--text-primary)' }}>{c.text}</span>
                                 </div>
                               ))}
@@ -1635,7 +1673,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                          )}
 
                          {/* COMMENT INPUT */}
-                         <div style={{ display: 'flex', gap: '0.8rem' }}>
+                         <div style={{ display: 'flex', gap: '0.6rem' }}>
                             <input 
                               type="text" 
                               className="glass-input" 
@@ -1643,25 +1681,27 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                               value={commentInputs[post.id] || ''}
                               onChange={(e) => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
                               onKeyDown={(e) => e.key === 'Enter' && handleAddComment(post.id, post.comments)}
-                              style={{ padding: '0.6rem 1rem', fontSize: '0.9rem', borderRadius: '12px' }}
+                              style={{ padding: '0.5rem 0.8rem', fontSize: '0.85rem', borderRadius: '100px', background: 'rgba(0,0,0,0.03)', border: 'none' }}
                             />
                             <button 
                               className="btn btn-primary" 
-                              style={{ padding: '0.6rem' }}
+                              style={{ padding: '0.5rem', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                               onClick={() => handleAddComment(post.id, post.comments)}
                               disabled={!commentInputs[post.id]?.trim()}
                             >
-                              <Send size={18} />
+                              <Send size={14} />
                             </button>
                          </div>
                       </div>
                     </div>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
           </div>
         )}
+
 
 
         {activeTab === 'events' && !selectedEvent && (
