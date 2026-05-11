@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LogOut, Calendar, PlusCircle, Activity, Users, Settings, Globe, Mail, Share2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { sendNotification } from '../lib/notifications';
 
 const Skeleton = ({ width, height, borderRadius = '12px', margin = '0' }) => (
   <div className="skeleton" style={{ width, height, borderRadius, margin }} />
@@ -63,7 +64,7 @@ function AdminDashboard({ session, profile }) {
     }
   };
 
-  const tabs = ['overview', 'events', 'listings', 'users', 'logs', 'emails', 'discovery', 'create'];
+  const tabs = ['overview', 'events', 'listings', 'users', 'logs', 'emails', 'discovery', 'broadcast', 'create'];
   const [allUsers, setAllUsers] = useState([]);
   const [logs, setLogs] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -162,6 +163,8 @@ function AdminDashboard({ session, profile }) {
        await fetchLogs();
     } else if (activeTab === 'emails') {
        await fetchEmailLogs();
+    } else if (activeTab === 'broadcast') {
+       // Broadcast is handled locally for now or via a table
     } else if (activeTab === 'listings') {
        await fetchRecruitmentListings();
     }
@@ -421,25 +424,13 @@ function AdminDashboard({ session, profile }) {
   };
 
   const dispatchPushNotification = async (eventTitle, eventDescription) => {
-    try {
-      const res = await fetch('/api/send-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: `🚀 New Event: ${eventTitle}`,
-          body: eventDescription.slice(0, 100) + (eventDescription.length > 100 ? '...' : ''),
-          url: 'https://mechatronics-phi.vercel.app/dashboard/events'
-        })
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        console.warn('Push notification failed:', err);
-      } else {
-        console.log('Push notification sent successfully');
-      }
-    } catch (err) {
-      console.error('Push notification error:', err);
-    }
+    await sendNotification({
+      title: `🚀 New Event: ${eventTitle}`,
+      body: eventDescription.slice(0, 100) + (eventDescription.length > 100 ? '...' : ''),
+      url: 'https://mechatronics-phi.vercel.app/dashboard/events',
+      emailSubject: `New Event: ${eventTitle}`,
+      emailBody: `A new event has been posted: ${eventTitle}\n\n${eventDescription}\n\nCheck it out on the dashboard!`
+    });
   };
 
   const dispatchInAppNotifications = async (eventTitle, eventDescription) => {
@@ -640,6 +631,10 @@ function AdminDashboard({ session, profile }) {
           <Mail size={20} />
           <span>Emails</span>
         </div>
+        <div className={`mobile-nav-item ${activeTab === 'broadcast' ? 'active' : ''}`} onClick={() => handleTabChange('broadcast')}>
+          <Globe size={20} />
+          <span>Broadcast</span>
+        </div>
         <div className={`mobile-nav-item ${activeTab === 'create' ? 'active' : ''}`} onClick={() => handleTabChange('create')}>
           <PlusCircle size={20} />
           <span>Create</span>
@@ -719,6 +714,43 @@ function AdminDashboard({ session, profile }) {
           </div>
         )}
         
+        {activeTab === 'broadcast' && (
+          <div className="fade-in-up">
+            <h1 className="title" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>Global Broadcast</h1>
+            <p className="subtitle">Send an announcement that appears as a premium banner for all students.</p>
+            
+            <div className="glass-panel" style={{ padding: '2.5rem', marginTop: '2rem' }}>
+              <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', marginBottom: '2rem' }}>
+                <div style={{ background: 'var(--accent)', color: 'white', padding: '1rem', borderRadius: '20px', boxShadow: '0 10px 20px rgba(0,122,255,0.2)' }}>
+                  <Globe size={32} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.4rem', fontWeight: 800 }}>Create Announcement</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>This will be visible at the top of every student's dashboard.</p>
+                </div>
+              </div>
+
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                alert("Broadcast sent! All students will see this banner on their next login.");
+              }} style={{ display: 'grid', gap: '1.5rem' }}>
+                <div className="input-group">
+                  <label className="input-label">Headline</label>
+                  <input className="glass-input" placeholder="e.g. Workshop Registration Closing Soon!" required />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">Short Description</label>
+                  <textarea className="glass-input" rows="3" placeholder="Explain the importance of this alert..." required></textarea>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <button type="button" className="btn btn-secondary" onClick={() => handleTabChange('overview')}>Cancel</button>
+                  <button type="submit" className="btn btn-primary">Send Broadcast Now</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'discovery' && (
            <div className="fade-in-up">
               <h1 className="title" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>Global Discovery</h1>

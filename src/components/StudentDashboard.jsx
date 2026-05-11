@@ -8,6 +8,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Logo from './Logo';
 import NotificationBell from './NotificationBell';
+import { sendNotification } from '../lib/notifications';
 import TeamChat from './TeamChat';
 import PortfolioView from './PortfolioView';
 
@@ -175,7 +176,8 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   const [formDevRole, setFormDevRole] = useState(profile?.dev_role || '');
   const [formResume, setFormResume] = useState(profile?.resume_url || '');
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '');
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [activeBroadcast, setActiveBroadcast] = useState(null);
+  const [showBroadcast, setShowBroadcast] = useState(true);
 
 
   const triggerHaptic = (pattern = 10) => {
@@ -429,6 +431,28 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
       else alert(error.message);
     } else {
       await logActivity('sent_request_listing', { listing_id: listingId, role });
+      
+      // Find listing to get creator_id
+      const listing = listings.find(l => l.id === listingId);
+      if (listing) {
+        sendNotification({
+          title: '🚀 New Application!',
+          body: `${profile.full_name} applied to join your team "${listing.team_name}" as ${role}`,
+          userIds: [listing.creator_id],
+          url: 'https://mechatronics-phi.vercel.app/dashboard/activity',
+          emailSubject: `New applicant for ${listing.team_name}!`,
+          emailBody: `Hi! ${profile.full_name} has applied for the ${role} role in your team. View their profile on the dashboard.`
+        });
+
+        await supabase.from('in_app_notifications').insert([{
+          user_id: listing.creator_id,
+          title: '🚀 New Application!',
+          body: `${profile.full_name} applied to your team "${listing.team_name}"`,
+          link: '/dashboard/activity',
+          type: 'join_request'
+        }]);
+      }
+
       alert("Application sent! The team lead will be notified.");
       fetchEvents();
       if (activeTab === 'discovery') fetchListings();
@@ -462,6 +486,18 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
     ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     setEvents(combined);
+    
+    // Set latest admin event as broadcast if no dedicated broadcast table exists
+    const latestAdmin = combined.find(e => e.source_type === 'admin');
+    if (latestAdmin && !activeBroadcast) {
+      setActiveBroadcast({
+        id: latestAdmin.id,
+        title: latestAdmin.title,
+        body: latestAdmin.description,
+        type: 'event'
+      });
+    }
+    
     setLoading(false);
   };
 
@@ -803,6 +839,26 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
     if (!error) {
       alert("Invitation sent!");
       setSentInvitations(prev => ({ ...prev, [studentId]: 'pending' }));
+      
+      // Notify the student
+      sendNotification({
+        title: '📩 New Team Invitation!',
+        body: `${profile.full_name} invited you to join team "${myTeamForEvent.team_name}"`,
+        userIds: [studentId],
+        url: 'https://mechatronics-phi.vercel.app/dashboard/activity',
+        emailSubject: `You've been invited to join a team!`,
+        emailBody: `Hi! ${profile.full_name} has invited you to join their team "${myTeamForEvent.team_name}". Check your dashboard to accept.`
+      });
+
+      // Also add in-app notification
+      await supabase.from('in_app_notifications').insert([{
+        user_id: studentId,
+        title: '📩 New Team Invitation!',
+        body: `${profile.full_name} invited you to join team "${myTeamForEvent.team_name}"`,
+        link: '/dashboard/activity',
+        type: 'join_request'
+      }]);
+
     } else {
       if (error.code === '23505') alert("Invitation already sent to this student.");
       else alert(error.message);
@@ -1087,6 +1143,16 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
       type: status === 'approved' ? 'approval' : 'general'
     }]);
 
+    // Send OneSignal (Push + Email)
+    await sendNotification({
+      title: notifTitle,
+      body: notifBody,
+      userIds: [applicantId],
+      url: 'https://mechatronics-phi.vercel.app/dashboard/activity',
+      emailSubject: `Your application has been ${status}`,
+      emailBody: `Hello! Your request to join the team has been ${status}. Log in to view details.`
+    });
+
     alert(`Request ${status} successfully!`);
   };
 
@@ -1160,7 +1226,69 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
         </div>
       </div>
 
-      <main className="container" style={{ flex: 1, padding: '3rem 2rem', maxWidth: '1000px' }}>
+      <main className="container" style={{ flex: 1, padding: '1rem 2rem 3rem 2rem', maxWidth: '1000px' }}>
+        
+        {/* BROADCAST BANNER */}
+        {activeBroadcast && showBroadcast && (
+          <div className="fade-in-up" style={{ 
+            background: 'linear-gradient(135deg, rgba(0,122,255,0.15) 0%, rgba(175,82,222,0.15) 100%)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '24px',
+            padding: '1.2rem 1.8rem',
+            marginBottom: '2rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1.5rem',
+            backdropFilter: 'blur(20px)',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            <div style={{ 
+              position: 'absolute', top: '-20px', left: '-20px', width: '100px', height: '100px', 
+              background: 'radial-gradient(circle, rgba(0,122,255,0.2) 0%, transparent 70%)',
+              filter: 'blur(20px)'
+            }}></div>
+            
+            <div style={{ 
+              width: '48px', height: '48px', borderRadius: '16px', background: 'var(--accent)', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0,
+              boxShadow: '0 8px 20px rgba(0,122,255,0.3)',
+              animation: 'float 3s ease-in-out infinite'
+            }}>
+              <Award size={24} />
+            </div>
+            
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.2rem' }}>
+                <span style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--accent)', letterSpacing: '0.1em' }}>URGENT ANNOUNCEMENT</span>
+                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#FF3B30', animation: 'pulse-red 1s infinite' }}></div>
+              </div>
+              <h4 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, letterSpacing: '-0.01em' }}>{activeBroadcast.title}</h4>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0.2rem 0 0 0', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                {activeBroadcast.body}
+              </p>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+              <button 
+                className="btn btn-primary" 
+                style={{ padding: '0.6rem 1.2rem', fontSize: '0.85rem', borderRadius: '14px' }}
+                onClick={() => {
+                  const el = document.getElementById(`event-${activeBroadcast.id}`);
+                  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }}
+              >
+                View Details
+              </button>
+              <button 
+                onClick={() => setShowBroadcast(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.5rem' }}
+              >
+                <XCircle size={20} />
+              </button>
+            </div>
+          </div>
+        )}
         
         {/* HOME / EVENTS TAB */}
         {activeTab === 'events' && !selectedEvent && (
@@ -1174,18 +1302,21 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
               </h1>
               <p className="subtitle" style={{ fontSize: '1.1rem', marginTop: '0.5rem' }}>Ready to join your next dream team? Here's what's happening on campus.</p>
               
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginTop: '2rem' }}>
-                <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.5rem', marginTop: '2rem' }}>
+                <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: 0, right: 0, padding: '0.8rem', opacity: 0.1 }}><Calendar size={40} /></div>
                   <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Active Events</span>
-                  <span style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent)' }}>{events.length}</span>
+                  <span style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--accent)' }}>{events.length}</span>
                 </div>
-                <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', position: 'relative', overflow: 'hidden' }}>
+                   <div style={{ position: 'absolute', top: 0, right: 0, padding: '0.8rem', opacity: 0.1 }}><Users size={40} /></div>
                   <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>My Teams</span>
-                  <span style={{ fontSize: '2rem', fontWeight: 800, color: '#AF52DE' }}>{myJoinedTeams.length}</span>
+                  <span style={{ fontSize: '2.2rem', fontWeight: 800, color: '#AF52DE' }}>{myJoinedTeams.length}</span>
                 </div>
-                <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: 0, right: 0, padding: '0.8rem', opacity: 0.1 }}><Activity size={40} /></div>
                   <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Pending Requests</span>
-                  <span style={{ fontSize: '2rem', fontWeight: 800, color: '#FF9500' }}>{incomingRequests.length}</span>
+                  <span style={{ fontSize: '2.2rem', fontWeight: 800, color: '#FF9500' }}>{incomingRequests.length}</span>
                 </div>
               </div>
             </div>

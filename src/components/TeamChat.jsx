@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, X, MessageCircle, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { sendNotification } from '../lib/notifications';
 
 export default function TeamChat({ teamId, listingId, teamName, currentUser, onClose }) {
   const [messages, setMessages] = useState([]);
@@ -99,16 +100,15 @@ export default function TeamChat({ teamId, listingId, teamName, currentUser, onC
       }));
       await supabase.from('in_app_notifications').insert(notifications);
 
-      // 2. Push notifications (OneSignal)
-      fetch('/api/send-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userIds: others,
-          title: teamName,
-          message: `${currentUser.full_name}: ${content.substring(0, 100)}`
-        })
-      }).catch(e => console.error('Push error:', e));
+      // 2. OneSignal notifications (Push + Email)
+      sendNotification({
+        userIds: others,
+        title: teamName,
+        body: `${currentUser.full_name}: ${content.substring(0, 100)}`,
+        url: 'https://mechatronics-phi.vercel.app/dashboard/teams',
+        emailSubject: `New message in ${teamName}`,
+        emailBody: `${currentUser.full_name} sent a new message in ${teamName}: "${content.substring(0, 200)}${content.length > 200 ? '...' : ''}"`
+      });
 
     } catch (err) {
       console.error('Notify error:', err);

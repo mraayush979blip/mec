@@ -83,6 +83,7 @@ export default function NotificationBell({ userId }) {
       {/* Bell Button */}
       <button
         onClick={() => setOpen(o => !o)}
+        className={unreadCount > 0 ? 'bell-pulse' : ''}
         style={{
           position: 'relative',
           background: 'rgba(255,255,255,0.05)',
@@ -204,6 +205,14 @@ export default function NotificationBell({ userId }) {
         @keyframes pulse-red {
           0%, 100% { box-shadow: 0 0 0 0 rgba(255,59,48,0.5); }
           50% { box-shadow: 0 0 0 4px rgba(255,59,48,0); }
+        }
+        @keyframes pulse-ring {
+          0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 122, 255, 0.7); }
+          70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 122, 255, 0); }
+          100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 122, 255, 0); }
+        }
+        .bell-pulse {
+          animation: pulse-ring 2s infinite;
         }
       `}</style>
     </div>

@@ -224,6 +224,10 @@ function App() {
         window.OneSignalDeferred = window.OneSignalDeferred || [];
         window.OneSignalDeferred.push(function (OneSignal) {
           OneSignal.login(data.id);
+          // Sync email for OneSignal Email service (Free Tier)
+          if (data.email) {
+            OneSignal.User.addEmail(data.email);
+          }
           OneSignal.User.addTags({
             full_name: data.full_name,
             role: data.role,
