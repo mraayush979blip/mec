@@ -160,8 +160,16 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   const [listingDescription, setListingDescription] = useState('');
   const [isCreatingListing, setIsCreatingListing] = useState(false);
 
+  // Feed State
+  const [feedPosts, setFeedPosts] = useState([]);
+  const [newPostContent, setNewPostContent] = useState('');
+  const [postImage, setPostImage] = useState(null);
+  const [isPosting, setIsPosting] = useState(false);
+  const [isLikeLoading, setIsLikeLoading] = useState({});
+
   // Global Chat State
   const [activeChat, setActiveChat] = useState(null); // { teamId, listingId, teamName }
+
 
   // Global Search State
   const [searchQuery, setSearchQuery] = useState('');
@@ -221,8 +229,86 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank');
   };
 
+  const fetchFeed = async () => {
+    const { data, error } = await supabase
+      .from('activity_posts')
+      .select('*, profiles(full_name, avatar_url, dev_role)')
+      .order('created_at', { ascending: false });
+    
+    if (!error && data) {
+      setFeedPosts(data);
+    }
+  };
+
+  const handleCreatePost = async () => {
+    if (!newPostContent.trim()) return;
+    
+    setIsPosting(true);
+    try {
+      let imageUrl = null;
+      if (postImage) {
+        const compressed = await compressImage(postImage, 0.7, 1000);
+        const fileName = `${session.user.id}/${Date.now()}.jpg`;
+        const { error: uploadError } = await supabase.storage
+          .from('post_images')
+          .upload(fileName, compressed, { contentType: 'image/jpeg' });
+        
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('post_images')
+            .getPublicUrl(fileName);
+          imageUrl = publicUrl;
+        }
+      }
+
+      const { error } = await supabase.from('activity_posts').insert({
+        user_id: session.user.id,
+        content: newPostContent,
+        image_url: imageUrl
+      });
+
+      if (error) throw error;
+      
+      setNewPostContent('');
+      setPostImage(null);
+      fetchFeed();
+      triggerHaptic(20);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setIsPosting(false);
+    }
+  };
+
+  const handleLikePost = async (postId, currentLikes = []) => {
+    const myId = session.user.id;
+    const isLiked = currentLikes?.includes(myId);
+    const newLikes = isLiked 
+      ? currentLikes.filter(id => id !== myId)
+      : [...(currentLikes || []), myId];
+    
+    setIsLikeLoading(prev => ({ ...prev, [postId]: true }));
+    const { error } = await supabase
+      .from('activity_posts')
+      .update({ likes: newLikes })
+      .eq('id', postId);
+    
+    if (!error) {
+      setFeedPosts(prev => prev.map(p => p.id === postId ? { ...p, likes: newLikes } : p));
+      if (!isLiked) triggerHaptic(15);
+    }
+    setIsLikeLoading(prev => ({ ...prev, [postId]: false }));
+  };
+
+  useEffect(() => {
+    if (activeTab === 'feed') {
+      fetchFeed();
+    }
+  }, [activeTab]);
+
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
+
     const id = searchParams.get('id');
     if (id && events.length > 0 && activeTab === 'events') {
       setTimeout(() => {
@@ -253,7 +339,8 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
     }
   }, [listings, location.search, activeTab]);
 
-  const tabs = ['events', 'discovery', 'find_member', 'activity', 'teams', 'profile'];
+  const tabs = ['feed', 'events', 'discovery', 'find_member', 'activity', 'teams', 'profile'];
+
 
 
   const handleTabChange = (tab) => {
@@ -1203,10 +1290,15 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
 
       {/* MOBILE BOTTOM NAV */}
       <div className="mobile-bottom-nav">
+        <div className={`mobile-nav-item ${activeTab === 'feed' ? 'active' : ''}`} onClick={() => handleTabChange('feed')}>
+          <Zap size={20} />
+          <span>Feed</span>
+        </div>
         <div className={`mobile-nav-item ${activeTab === 'events' ? 'active' : ''}`} onClick={() => handleTabChange('events')}>
           <Calendar size={20} />
           <span>Events</span>
         </div>
+
         <div className={`mobile-nav-item ${activeTab === 'discovery' ? 'active' : ''}`} onClick={() => handleTabChange('discovery')}>
           <Globe size={20} />
           <span>Discover</span>
@@ -1294,7 +1386,115 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
         )}
         
         {/* HOME / EVENTS TAB */}
+        {/* ACTIVITY FEED TAB */}
+        {activeTab === 'feed' && (
+          <div className="fade-in-up">
+            <h1 className="dashboard-title">Mechatronian Pulse</h1>
+            <p className="subtitle">Share your builds, breakthroughs, and questions with the community.</p>
+
+            <div style={{ display: 'grid', gap: '2rem', marginTop: '2rem' }}>
+              {/* POST CREATOR */}
+              <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                <textarea 
+                  className="glass-input" 
+                  placeholder="What's your latest build?" 
+                  value={newPostContent}
+                  onChange={(e) => setNewPostContent(e.target.value)}
+                  style={{ minHeight: '100px', resize: 'none', marginBottom: '1rem' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent)', fontWeight: 600 }}>
+                      <Camera size={20} />
+                      <span className="desktop-only">Photo</span>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        style={{ display: 'none' }} 
+                        onChange={(e) => setPostImage(e.target.files[0])}
+                      />
+                    </label>
+                    {postImage && <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>✓ {postImage.name.substring(0,10)}...</span>}
+                  </div>
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={handleCreatePost} 
+                    disabled={isPosting || !newPostContent.trim()}
+                    style={{ padding: '0.6rem 1.5rem' }}
+                  >
+                    {isPosting ? 'Posting...' : 'Post Update'}
+                  </button>
+                </div>
+              </div>
+
+              {/* POST LIST */}
+              <div style={{ display: 'grid', gap: '1.5rem' }}>
+                {feedPosts.length === 0 ? (
+                  <div className="glass-panel" style={{ padding: '5rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    No pulses yet. Be the first to share!
+                  </div>
+                ) : feedPosts.map(post => (
+                  <div key={post.id} className="glass-panel fade-in-up" style={{ padding: '1.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.2rem' }}>
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <img 
+                          src={post.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${post.profiles?.full_name}&background=random`} 
+                          style={{ width: '45px', height: '45px', borderRadius: '12px', objectFit: 'cover' }}
+                          alt="avatar"
+                        />
+                        <div>
+                          <h4 style={{ fontWeight: 800 }}>{post.profiles?.full_name}</h4>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                            {post.profiles?.dev_role || 'Mechatronian'} • {new Date(post.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <button 
+                        className="btn" 
+                        style={{ padding: '0.5rem', color: 'var(--text-secondary)' }}
+                        onClick={() => handleShare(post, 'post')}
+                      >
+                        <Share2 size={18} />
+                      </button>
+                    </div>
+
+                    <p style={{ fontSize: '1rem', lineHeight: '1.6', marginBottom: '1rem', whiteSpace: 'pre-wrap' }}>
+                      {post.content}
+                    </p>
+
+                    {post.image_url && (
+                      <div style={{ borderRadius: '16px', overflow: 'hidden', marginBottom: '1.2rem', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        <img src={post.image_url} style={{ width: '100%', display: 'block' }} alt="post content" />
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '1rem' }}>
+                      <button 
+                        className={`btn ${post.likes?.includes(session.user.id) ? 'btn-primary' : ''}`}
+                        style={{ 
+                          padding: '0.5rem 1rem', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '0.5rem',
+                          background: post.likes?.includes(session.user.id) ? 'var(--accent)' : 'rgba(0,0,0,0.05)',
+                          color: post.likes?.includes(session.user.id) ? 'white' : 'var(--text-primary)'
+                        }}
+                        onClick={() => handleLikePost(post.id, post.likes)}
+                        disabled={isLikeLoading[post.id]}
+                      >
+                        <Heart size={18} fill={post.likes?.includes(session.user.id) ? 'white' : 'none'} />
+                        <span style={{ fontWeight: 700 }}>{post.likes?.length || 0}</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'events' && !selectedEvent && (
+
           <div className="fade-in-up">
             <div style={{ marginBottom: '3rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
