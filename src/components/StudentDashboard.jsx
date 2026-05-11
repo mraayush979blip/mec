@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   LogOut, User, Calendar, PlusCircle, ArrowRight, Activity, 
   Users, Shield, CheckCircle, XCircle, Star, Search, 
-  MapPin, Link as LinkIcon, Briefcase, Globe, GitBranch, FileText, MessageCircle, Download, Smartphone, Trash2, Info, Share2, Award, Zap, Heart, Camera
+  MapPin, Link as LinkIcon, Briefcase, Globe, GitBranch, FileText, MessageCircle, Download, Smartphone, Trash2, Info, Share2, Award, Zap, Heart, Camera, Send, X
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -166,8 +166,10 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   const [postImage, setPostImage] = useState(null);
   const [isPosting, setIsPosting] = useState(false);
   const [isLikeLoading, setIsLikeLoading] = useState({});
+  const [commentInputs, setCommentInputs] = useState({}); // {postId: 'text'}
 
   // Global Chat State
+
   const [activeChat, setActiveChat] = useState(null); // { teamId, listingId, teamName }
 
 
@@ -300,7 +302,34 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
     setIsLikeLoading(prev => ({ ...prev, [postId]: false }));
   };
 
+  const handleAddComment = async (postId, existingComments = []) => {
+    const text = commentInputs[postId];
+    if (!text?.trim()) return;
+
+    const newComment = {
+      id: Date.now(),
+      user_id: session.user.id,
+      user_name: profile.full_name,
+      text: text.trim(),
+      created_at: new Date().toISOString()
+    };
+
+    const updatedComments = [...(existingComments || []), newComment];
+    
+    const { error } = await supabase
+      .from('activity_posts')
+      .update({ comments: updatedComments })
+      .eq('id', postId);
+    
+    if (!error) {
+      setFeedPosts(prev => prev.map(p => p.id === postId ? { ...p, comments: updatedComments } : p));
+      setCommentInputs(prev => ({ ...prev, [postId]: '' }));
+      triggerHaptic(10);
+    }
+  };
+
   useEffect(() => {
+
     if (activeTab === 'feed') {
       fetchFeed();
     }
@@ -1388,103 +1417,232 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
         {/* HOME / EVENTS TAB */}
         {/* ACTIVITY FEED TAB */}
         {activeTab === 'feed' && (
-          <div className="fade-in-up">
-            <h1 className="dashboard-title">Mechatronian Pulse</h1>
-            <p className="subtitle">Share your builds, breakthroughs, and questions with the community.</p>
+          <div className="fade-in-up" style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+               <div style={{ 
+                 display: 'inline-flex', alignItems: 'center', gap: '0.8rem', 
+                 background: 'var(--accent-light)', padding: '0.6rem 1.2rem', 
+                 borderRadius: '100px', color: 'var(--accent)', fontWeight: 800,
+                 fontSize: '0.8rem', marginBottom: '1rem', border: '1px solid rgba(0,122,255,0.1)'
+               }}>
+                 <Zap size={16} fill="var(--accent)" />
+                 GLOBAL PULSE
+               </div>
+               <h1 className="dashboard-title" style={{ fontSize: '2.5rem' }}>Mechatronian Community</h1>
+               <p className="subtitle">Discover what your peers are building across the platform.</p>
+            </div>
 
-            <div style={{ display: 'grid', gap: '2rem', marginTop: '2rem' }}>
-              {/* POST CREATOR */}
-              <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                <textarea 
-                  className="glass-input" 
-                  placeholder="What's your latest build?" 
-                  value={newPostContent}
-                  onChange={(e) => setNewPostContent(e.target.value)}
-                  style={{ minHeight: '100px', resize: 'none', marginBottom: '1rem' }}
-                />
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', gap: '1rem' }}>
-                    <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent)', fontWeight: 600 }}>
-                      <Camera size={20} />
-                      <span className="desktop-only">Photo</span>
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        style={{ display: 'none' }} 
-                        onChange={(e) => setPostImage(e.target.files[0])}
-                      />
-                    </label>
-                    {postImage && <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>✓ {postImage.name.substring(0,10)}...</span>}
-                  </div>
-                  <button 
-                    className="btn btn-primary" 
-                    onClick={handleCreatePost} 
-                    disabled={isPosting || !newPostContent.trim()}
-                    style={{ padding: '0.6rem 1.5rem' }}
-                  >
-                    {isPosting ? 'Posting...' : 'Post Update'}
-                  </button>
-                </div>
-              </div>
-
-              {/* POST LIST */}
-              <div style={{ display: 'grid', gap: '1.5rem' }}>
-                {feedPosts.length === 0 ? (
-                  <div className="glass-panel" style={{ padding: '5rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                    No pulses yet. Be the first to share!
-                  </div>
-                ) : feedPosts.map(post => (
-                  <div key={post.id} className="glass-panel fade-in-up" style={{ padding: '1.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.2rem' }}>
-                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                        <img 
-                          src={post.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${post.profiles?.full_name}&background=random`} 
-                          style={{ width: '45px', height: '45px', borderRadius: '12px', objectFit: 'cover' }}
-                          alt="avatar"
-                        />
-                        <div>
-                          <h4 style={{ fontWeight: 800 }}>{post.profiles?.full_name}</h4>
-                          <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                            {post.profiles?.dev_role || 'Mechatronian'} • {new Date(post.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                      <button 
-                        className="btn" 
-                        style={{ padding: '0.5rem', color: 'var(--text-secondary)' }}
-                        onClick={() => handleShare(post, 'post')}
-                      >
-                        <Share2 size={18} />
-                      </button>
-                    </div>
-
-                    <p style={{ fontSize: '1rem', lineHeight: '1.6', marginBottom: '1rem', whiteSpace: 'pre-wrap' }}>
-                      {post.content}
-                    </p>
-
-                    {post.image_url && (
-                      <div style={{ borderRadius: '16px', overflow: 'hidden', marginBottom: '1.2rem', border: '1px solid rgba(255,255,255,0.1)' }}>
-                        <img src={post.image_url} style={{ width: '100%', display: 'block' }} alt="post content" />
+            <div style={{ display: 'grid', gap: '2.5rem' }}>
+              {/* PREMIUM POST CREATOR */}
+              <div className="glass-panel" style={{ 
+                padding: '2rem', 
+                border: '1px solid rgba(255,255,255,0.2)',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                <div style={{ display: 'flex', gap: '1.2rem' }}>
+                   <img 
+                    src={profile?.avatar_url || `https://ui-avatars.com/api/?name=${profile?.full_name}&background=random`} 
+                    style={{ width: '48px', height: '48px', borderRadius: '14px', objectFit: 'cover' }}
+                    alt="user"
+                  />
+                  <div style={{ flex: 1 }}>
+                    <textarea 
+                      className="glass-input" 
+                      placeholder="Share a breakthrough or ask a question..." 
+                      value={newPostContent}
+                      onChange={(e) => setNewPostContent(e.target.value)}
+                      style={{ 
+                        minHeight: '120px', 
+                        background: 'rgba(0,0,0,0.02)', 
+                        border: 'none',
+                        fontSize: '1.1rem',
+                        padding: '1rem'
+                      }}
+                    />
+                    
+                    {postImage && (
+                      <div style={{ 
+                        marginTop: '1rem', position: 'relative', borderRadius: '16px', 
+                        overflow: 'hidden', border: '1px solid var(--accent-light)' 
+                      }}>
+                        <img src={URL.createObjectURL(postImage)} style={{ width: '100%', height: '200px', objectFit: 'cover' }} alt="preview" />
+                        <button 
+                          onClick={() => setPostImage(null)}
+                          style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer' }}
+                        >
+                          <X size={16} />
+                        </button>
                       </div>
                     )}
 
-                    <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '1.5rem' }}>
+                      <label style={{ 
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.6rem', 
+                        color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.9rem',
+                        transition: 'color 0.3s'
+                      }} className="hover-accent">
+                        <Camera size={22} />
+                        <span>Add Photo</span>
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          style={{ display: 'none' }} 
+                          onChange={(e) => setPostImage(e.target.files[0])}
+                        />
+                      </label>
+                      
                       <button 
-                        className={`btn ${post.likes?.includes(session.user.id) ? 'btn-primary' : ''}`}
+                        className="btn btn-primary" 
+                        onClick={handleCreatePost} 
+                        disabled={isPosting || !newPostContent.trim()}
+                        style={{ padding: '0.8rem 2rem', borderRadius: '14px', fontWeight: 800 }}
+                      >
+                        {isPosting ? 'Publishing...' : 'Publish Pulse'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ENHANCED POST LIST */}
+              <div style={{ display: 'grid', gap: '2rem' }}>
+                {feedPosts.length === 0 ? (
+                  <div className="glass-panel" style={{ padding: '8rem 2rem', textAlign: 'center' }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🛰️</div>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>The pulse is quiet. Start the conversation!</p>
+                  </div>
+                ) : feedPosts.map(post => (
+                  <div key={post.id} className="glass-panel fade-in-up" style={{ 
+                    padding: '0', 
+                    overflow: 'hidden',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    boxShadow: 'var(--shadow-md)'
+                  }}>
+                    <div style={{ padding: '1.5rem 1.8rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                        <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'center' }}>
+                          <div style={{ position: 'relative' }}>
+                            <img 
+                              src={post.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${post.profiles?.full_name}&background=random`} 
+                              style={{ width: '52px', height: '52px', borderRadius: '16px', objectFit: 'cover', border: '2px solid white' }}
+                              alt="avatar"
+                            />
+                            <div style={{ 
+                              position: 'absolute', bottom: '-4px', right: '-4px', 
+                              width: '18px', height: '18px', background: '#34C759', 
+                              border: '3px solid white', borderRadius: '50%' 
+                            }}></div>
+                          </div>
+                          <div>
+                            <h4 style={{ fontWeight: 800, fontSize: '1.1rem', marginBottom: '0.2rem' }}>{post.profiles?.full_name}</h4>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--accent)', fontWeight: 700 }}>
+                              {post.profiles?.dev_role || 'Mechatronian'} • <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{new Date(post.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                            </p>
+                          </div>
+                        </div>
+                        <button 
+                          className="btn-icon" 
+                          style={{ background: 'rgba(0,0,0,0.03)', width: '40px', height: '40px' }}
+                          onClick={() => handleShare(post, 'post')}
+                        >
+                          <Share2 size={18} />
+                        </button>
+                      </div>
+
+                      <p style={{ 
+                        fontSize: '1.1rem', 
+                        lineHeight: '1.7', 
+                        color: 'var(--text-primary)',
+                        marginBottom: '1.5rem', 
+                        whiteSpace: 'pre-wrap',
+                        fontWeight: 500
+                      }}>
+                        {post.content}
+                      </p>
+                    </div>
+
+                    {post.image_url && (
+                      <div style={{ position: 'relative', maxHeight: '500px', overflow: 'hidden', background: '#000' }}>
+                        <img src={post.image_url} style={{ width: '100%', display: 'block', opacity: 0.95 }} alt="post content" />
+                      </div>
+                    )}
+
+                    <div style={{ 
+                      padding: '1.2rem 1.8rem', 
+                      background: 'rgba(0,0,0,0.015)',
+                      display: 'flex',
+                      gap: '1.5rem',
+                      alignItems: 'center'
+                    }}>
+                      <button 
+                        className={`btn-like ${post.likes?.includes(session.user.id) ? 'active' : ''}`}
                         style={{ 
-                          padding: '0.5rem 1rem', 
                           display: 'flex', 
                           alignItems: 'center', 
-                          gap: '0.5rem',
-                          background: post.likes?.includes(session.user.id) ? 'var(--accent)' : 'rgba(0,0,0,0.05)',
-                          color: post.likes?.includes(session.user.id) ? 'white' : 'var(--text-primary)'
+                          gap: '0.8rem',
+                          background: post.likes?.includes(session.user.id) ? 'var(--accent)' : 'white',
+                          color: post.likes?.includes(session.user.id) ? 'white' : 'var(--text-primary)',
+                          padding: '0.6rem 1.2rem',
+                          borderRadius: '12px',
+                          border: '1px solid rgba(0,0,0,0.05)',
+                          boxShadow: post.likes?.includes(session.user.id) ? '0 8px 20px rgba(0,122,255,0.3)' : 'none',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
                         }}
                         onClick={() => handleLikePost(post.id, post.likes)}
                         disabled={isLikeLoading[post.id]}
                       >
-                        <Heart size={18} fill={post.likes?.includes(session.user.id) ? 'white' : 'none'} />
-                        <span style={{ fontWeight: 700 }}>{post.likes?.length || 0}</span>
+                        <Heart 
+                          size={20} 
+                          fill={post.likes?.includes(session.user.id) ? 'white' : 'none'} 
+                          style={{ transition: 'transform 0.3s' }}
+                        />
+                        <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>{post.likes?.length || 0}</span>
                       </button>
+                      
+                      <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>
+                        {post.likes?.length > 0 ? `${post.likes.length} mechatronians liked this` : 'Be the first to like'}
+                      </div>
+                    </div>
+
+                    {/* COMMENTS SECTION */}
+                    <div style={{ padding: '0 1.8rem 1.8rem 1.8rem' }}>
+                      <div style={{ borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '1.2rem' }}>
+                         {/* COMMENTS LIST */}
+                         {post.comments?.length > 0 && (
+                           <div style={{ display: 'grid', gap: '0.8rem', marginBottom: '1.2rem' }}>
+                              {post.comments.map(c => (
+                                <div key={c.id} style={{ background: 'rgba(0,0,0,0.025)', padding: '0.8rem 1rem', borderRadius: '12px', fontSize: '0.9rem' }}>
+                                   <span style={{ fontWeight: 800, color: 'var(--accent)', marginRight: '0.5rem' }}>{c.user_name}</span>
+                                   <span style={{ color: 'var(--text-primary)' }}>{c.text}</span>
+                                </div>
+                              ))}
+                           </div>
+                         )}
+
+                         {/* COMMENT INPUT */}
+                         <div style={{ display: 'flex', gap: '0.8rem' }}>
+                            <input 
+                              type="text" 
+                              className="glass-input" 
+                              placeholder="Write a comment..." 
+                              value={commentInputs[post.id] || ''}
+                              onChange={(e) => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
+                              onKeyDown={(e) => e.key === 'Enter' && handleAddComment(post.id, post.comments)}
+                              style={{ padding: '0.6rem 1rem', fontSize: '0.9rem', borderRadius: '12px' }}
+                            />
+                            <button 
+                              className="btn btn-primary" 
+                              style={{ padding: '0.6rem' }}
+                              onClick={() => handleAddComment(post.id, post.comments)}
+                              disabled={!commentInputs[post.id]?.trim()}
+                            >
+                              <Send size={18} />
+                            </button>
+                         </div>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1493,7 +1651,9 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
           </div>
         )}
 
+
         {activeTab === 'events' && !selectedEvent && (
+
 
           <div className="fade-in-up">
             <div style={{ marginBottom: '3rem' }}>

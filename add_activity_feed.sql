@@ -5,8 +5,10 @@ CREATE TABLE IF NOT EXISTS activity_posts (
     content TEXT NOT NULL,
     image_url TEXT,
     likes UUID[] DEFAULT '{}', -- Array of user IDs who liked the post
+    comments JSONB DEFAULT '[]', -- Array of {user_id, name, text, created_at}
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
 
 -- 2. RLS POLICIES FOR ACTIVITY POSTS
 ALTER TABLE activity_posts ENABLE ROW LEVEL SECURITY;
