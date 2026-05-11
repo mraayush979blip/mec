@@ -628,6 +628,13 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
 
     if (bData) {
       setActiveBroadcast(bData);
+      // Only show if not dismissed before
+      const dismissedId = localStorage.getItem('dismissed_broadcast_id');
+      if (dismissedId !== bData.id) {
+        setShowBroadcast(true);
+      } else {
+        setShowBroadcast(false);
+      }
     } else {
       // Fallback to latest admin event if no dedicated broadcast
       const latestAdmin = combined.find(e => e.source_type === 'admin');
@@ -638,8 +645,15 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
           body: latestAdmin.description,
           type: 'event'
         });
+        const dismissedId = localStorage.getItem('dismissed_broadcast_id');
+        if (dismissedId !== latestAdmin.id) {
+          setShowBroadcast(true);
+        } else {
+          setShowBroadcast(false);
+        }
       }
     }
+
     
     setLoading(false);
 
@@ -1399,7 +1413,12 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
             }}></div>
             
             <button 
-              onClick={() => setShowBroadcast(false)}
+              onClick={() => {
+                setShowBroadcast(false);
+                if (activeBroadcast) {
+                  localStorage.setItem('dismissed_broadcast_id', activeBroadcast.id);
+                }
+              }}
               style={{ 
                 position: 'absolute', 
                 top: '12px', 
