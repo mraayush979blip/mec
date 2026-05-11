@@ -144,44 +144,8 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showPortfolio, setShowPortfolio] = useState(false);
+
   const [skillSearch, setSkillSearch] = useState('');
-
-  const handleAvatarUpload = async (event) => {
-    try {
-      setUploadingAvatar(true);
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${session.user.id}-${Math.random()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: publicUrl })
-        .eq('id', session.user.id);
-
-      if (updateError) throw updateError;
-      
-      alert('Profile picture updated!');
-      window.location.reload(); // Refresh to show new avatar
-    } catch (error) {
-      console.error('Error uploading avatar:', error);
-      alert('Error uploading avatar!');
-    } finally {
-      setUploadingAvatar(false);
-    }
-  };
 
 
   // Find Member Form State
