@@ -5,6 +5,7 @@ import { supabase } from './lib/supabase';
 import ErrorBoundary from './components/ErrorBoundary';
 import Logo from './components/Logo';
 import PremiumLoader from './components/PremiumLoader';
+import { Analytics } from "@vercel/analytics/react";
 
 const StudentDashboard = lazy(() => import('./components/StudentDashboard'));
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
@@ -623,6 +624,7 @@ function App() {
           )}
         </Suspense>
       </ErrorBoundary>
+      <Analytics />
     </div>
   );
 }
