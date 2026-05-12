@@ -1,9 +1,10 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { Sparkles, Users, Calendar, ArrowRight, Loader, Eye, EyeOff, Activity } from 'lucide-react';
+import { Sparkles, Users, Calendar, ArrowRight, Eye, EyeOff, Activity } from 'lucide-react';
 import { Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import ErrorBoundary from './components/ErrorBoundary';
 import Logo from './components/Logo';
+import PremiumLoader from './components/PremiumLoader';
 
 const StudentDashboard = lazy(() => import('./components/StudentDashboard'));
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
@@ -55,8 +56,21 @@ function App() {
       setDeferredPrompt(null);
     });
 
+    // Immersive Fullscreen Trick
+    const enterImmersive = () => {
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      if (isMobile && document.documentElement.requestFullscreen && !document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {
+          // Fail silently if blocked by browser
+        });
+      }
+      window.removeEventListener('click', enterImmersive);
+    };
+    window.addEventListener('click', enterImmersive);
+
     return () => {
       window.removeEventListener('beforeinstallprompt', installHandler);
+      window.removeEventListener('click', enterImmersive);
     };
   }, []);
   const [authFlow, setAuthFlow] = useState('landing'); // 'landing', 'login', 'signup', 'verify_otp', 'forgot_password', 'verify_forgot', 'reset_password'
@@ -141,6 +155,19 @@ function App() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // Hide Splash Screen once initialized
+  useEffect(() => {
+    if (!initializing) {
+      const splash = document.getElementById('splash-screen');
+      if (splash) {
+        splash.style.opacity = '0';
+        setTimeout(() => {
+          splash.style.visibility = 'hidden';
+        }, 600);
+      }
+    }
+  }, [initializing]);
 
   // Dedicated Timer Effect
   useEffect(() => {
@@ -347,12 +374,7 @@ function App() {
   };
 
   if (loadingProfile && session) {
-    return (
-      <div className="container h-screen-center fade-in-up">
-        <Loader size={32} style={{ animation: 'spin 2s linear infinite', color: 'var(--text-secondary)' }} />
-        <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>Loading your dashboard...</p>
-      </div>
-    );
+    return <PremiumLoader fullScreen message="Loading your dashboard..." />;
   }
 
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
@@ -375,57 +397,9 @@ function App() {
     <div style={{ position: 'relative', minHeight: '100vh' }}>
 
       <ErrorBoundary>
-        <Suspense fallback={
-          <div className="h-screen-center" style={{
-            background: 'var(--bg-primary)',
-            flexDirection: 'column',
-            gap: '1.5rem',
-            position: 'fixed',
-            inset: 0,
-            zIndex: 10000
-          }}>
-            <div className="premium-loader-container">
-              <div className="premium-loader-core">
-                <Activity size={48} color="var(--accent)" />
-              </div>
-              <div className="premium-loader-ring"></div>
-              <div className="premium-loader-ring-outer"></div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <h3 className="shimmer-text" style={{
-                fontSize: '1.2rem',
-                fontWeight: 700,
-                margin: 0,
-                letterSpacing: '-0.02em',
-                background: 'linear-gradient(90deg, var(--text-primary), var(--accent), var(--text-primary))',
-                backgroundSize: '200% auto',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                animation: 'shimmer 3s linear infinite'
-              }}>
-                Loading your dashboard
-              </h3>
-              <p style={{
-                fontSize: '0.85rem',
-                color: 'var(--text-secondary)',
-                marginTop: '0.6rem',
-                opacity: 0.7,
-                fontWeight: 500
-              }}>
-                Preparing your exclusive experience...
-              </p>
-            </div>
-          </div>
-        }>
+        <Suspense fallback={<PremiumLoader fullScreen message="Loading your dashboard..." />}>
           {initializing ? (
-            <div className="h-screen-center" style={{ background: 'var(--bg-primary)' }}>
-              <div className="premium-loader-container">
-                <div className="premium-loader-core">
-                  <Activity size={48} color="var(--accent)" />
-                </div>
-                <div className="premium-loader-ring"></div>
-              </div>
-            </div>
+            <PremiumLoader fullScreen message="Preparing your exclusive experience..." />
           ) : (
             <Routes>
               {/* LANDING PAGE */}

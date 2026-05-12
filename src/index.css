@@ -22,6 +22,12 @@
   --font-family: var(--font-main);
   --gradient-blue: linear-gradient(135deg, #007AFF 0%, #00C7BE 100%);
   --gradient-purple: linear-gradient(135deg, #AF52DE 0%, #FF2D55 100%);
+  
+  /* Safe Area Support */
+  --sat: env(safe-area-inset-top);
+  --sab: env(safe-area-inset-bottom);
+  --sal: env(safe-area-inset-left);
+  --sar: env(safe-area-inset-right);
 }
 
 
@@ -95,6 +101,7 @@ body {
   min-height: 100vh;
   transition: background-color 0.4s ease, color 0.4s ease;
   overflow-x: hidden;
+  overscroll-behavior-y: none; /* Prevents address bar from reappearing on pull-down */
 }
 
 /* Dynamic Animated Background */
@@ -877,6 +884,7 @@ body {
     position: sticky;
     top: 0;
     z-index: 1000;
+    padding-top: env(safe-area-inset-top);
   }
   
   .glass-header .container {
