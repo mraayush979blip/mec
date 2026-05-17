@@ -24,7 +24,7 @@
       "destination": "/api/$1"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!api/|assets/|sitemap\\.xml|robots\\.txt|google5c623909cef418f0\\.html|manifest\\.json|sw\\.js|favicon\\.svg|logo\\.png|logo_silver_v2\\.png|hero\\.png|icons\\.svg).*)",
       "destination": "/index.html"
     }
   ]
