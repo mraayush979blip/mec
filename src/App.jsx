@@ -438,11 +438,6 @@ function App() {
                               <a href="https://aayush-sharma-beige.vercel.app/" target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-large btn-dev">About Developer <Sparkles size={16} style={{ marginLeft: '0.4rem' }} /></a>
                             </div>
                             <div className="hero-credits fade-in-up delay-3" style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(10px)' }}>
-                              <div className="credit-card">
-                                <div className="credit-icon"><Users size={18} /></div>
-                                <div className="credit-info"><span className="credit-role">Project Lead</span><strong className="credit-name">Prof. Himanshu Bhiwapurkar</strong></div>
-                              </div>
-                              <div className="credit-divider"></div>
                               <a href="https://aayush-sharma-beige.vercel.app/" target="_blank" rel="noopener noreferrer" className="credit-card dev-spotlight" style={{ textDecoration: 'none' }}>
                                 <div className="credit-icon dev-icon"><Activity size={18} /></div>
                                 <div className="credit-info">

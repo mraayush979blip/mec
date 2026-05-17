@@ -131,8 +131,8 @@ RETURNS TRIGGER AS $$
 DECLARE
   assigned_role TEXT := 'student';
 BEGIN
-  -- Automatically make Himanshu the Admin
-  IF NEW.email = 'himanshubhiwapurkar@acropolis.in' THEN
+  -- Automatically make the.mechatronian@gmail.com or Himanshu the Admin
+  IF NEW.email = 'the.mechatronian@gmail.com' OR NEW.email = 'himanshubhiwapurkar@acropolis.in' THEN
     assigned_role := 'admin';
   END IF;
 
@@ -318,7 +318,7 @@ ON CONFLICT (link) DO NOTHING;
 -- 7. ADMIN OVERRIDE (Safety Net)
 -- ==========================================
 
--- Force update the admin role for the lead professor
+-- Force update the admin role for the project admins
 UPDATE public.profiles 
 SET role = 'admin' 
-WHERE email = 'himanshubhiwapurkar@acropolis.in';
+WHERE email IN ('the.mechatronian@gmail.com', 'himanshubhiwapurkar@acropolis.in');
