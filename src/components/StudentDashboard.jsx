@@ -159,6 +159,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   const [minExperience, setMinExperience] = useState('');
   const [listingDescription, setListingDescription] = useState('');
   const [isCreatingListing, setIsCreatingListing] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
 
   // Feed State
   const [feedPosts, setFeedPosts] = useState([]);
@@ -547,20 +548,23 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   };
 
   const handleApplyToListing = async (listingId) => {
+    if (isApplying) return;
     const role = window.prompt("Which role are you applying for? (e.g. Frontend, Designer, etc.)");
     if (!role) {
       alert("Role is required to apply.");
       return;
     }
 
-    const { error } = await supabase.from('join_requests').insert([
-      { listing_id: listingId, applicant_id: profile.id, source: 'application', role_applied: role }
-    ]);
-    if (error) {
-      if (error.code === '23505') alert("You have already applied to this team.");
-      else alert(error.message);
-    } else {
-      await logActivity('sent_request_listing', { listing_id: listingId, role });
+    setIsApplying(true);
+    try {
+      const { error } = await supabase.from('join_requests').insert([
+        { listing_id: listingId, applicant_id: profile.id, source: 'application', role_applied: role }
+      ]);
+      if (error) {
+        if (error.code === '23505') alert("You have already applied to this team.");
+        else alert(error.message);
+      } else {
+        await logActivity('sent_request_listing', { listing_id: listingId, role });
       
       // Find listing to get creator_id
       const listing = listings.find(l => l.id === listingId);
@@ -586,6 +590,9 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
       alert("Application sent! The team lead will be notified.");
       fetchEvents();
       if (activeTab === 'discovery') fetchListings();
+    }
+    } finally {
+      setIsApplying(false);
     }
   };
 
@@ -660,16 +667,22 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   };
 
   const handleVote = async (eventId, option) => {
-    const { error } = await supabase
-      .from('votes')
-      .insert([{ event_id: eventId, user_id: profile.id, option_text: option }]);
-    
-    if (error) {
-      if (error.code === '23505') alert("You have already voted in this poll!");
-      else alert(error.message);
-    } else {
-      alert("Vote cast successfully!");
-      fetchEvents();
+    if (isApplying) return;
+    setIsApplying(true);
+    try {
+      const { error } = await supabase
+        .from('votes')
+        .insert([{ event_id: eventId, user_id: profile.id, option_text: option }]);
+      
+      if (error) {
+        if (error.code === '23505') alert("You have already voted in this poll!");
+        else alert(error.message);
+      } else {
+        alert("Vote cast successfully!");
+        fetchEvents();
+      }
+    } finally {
+      setIsApplying(false);
     }
   };
 
@@ -1088,22 +1101,28 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   };
 
   const handleRequestJoin = async (teamId) => {
+    if (isApplying) return;
     const role = window.prompt("Which role are you applying for? (e.g. Frontend, Backend, Presenter, etc.)");
     if (!role) {
       alert("Role is required to join a team.");
       return;
     }
 
-    const { error } = await supabase.from('join_requests').insert([
-      { team_id: teamId, applicant_id: profile.id, source: 'application', role_applied: role }
-    ]);
-    if (error) {
-      if (error.code === '23505') alert("You have already requested to join this team.");
-      else alert(error.message);
-    } else {
-      await logActivity('sent_request_team', { team_id: teamId, role });
-      alert("Request sent successfully!");
-      loadExistingTeams();
+    setIsApplying(true);
+    try {
+      const { error } = await supabase.from('join_requests').insert([
+        { team_id: teamId, applicant_id: profile.id, source: 'application', role_applied: role }
+      ]);
+      if (error) {
+        if (error.code === '23505') alert("You have already requested to join this team.");
+        else alert(error.message);
+      } else {
+        await logActivity('sent_request_team', { team_id: teamId, role });
+        alert("Request sent successfully!");
+        loadExistingTeams();
+      }
+    } finally {
+      setIsApplying(false);
     }
   };
 
@@ -1237,10 +1256,18 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
         .select('*, teams(team_name, events(title))')
         .eq('user_id', userId);
 
+      const myTeamIds = myJoinedTeams.map(t => t.id || t.team_id || t.listing_id).filter(Boolean);
+      const viewedUserTeamIds = [
+        ...(createdTeams || []).map(t => t.id),
+        ...(joinedTeams || []).map(t => t.team_id)
+      ].filter(Boolean);
+      const isMutualTeam = myTeamIds.some(id => viewedUserTeamIds.includes(id));
+
       setViewProfileData({
         ...profileData,
         createdTeams: createdTeams || [],
-        joinedTeams: joinedTeams || []
+        joinedTeams: joinedTeams || [],
+        isMutualTeam
       });
     } catch (err) {
       console.error(err);
@@ -1764,7 +1791,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                 <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', position: 'relative', overflow: 'hidden' }}>
                   <div style={{ position: 'absolute', top: 0, right: 0, padding: '0.8rem', opacity: 0.1 }}><Activity size={40} /></div>
                   <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Pending Requests</span>
-                  <span style={{ fontSize: '2.2rem', fontWeight: 800, color: '#FF9500' }}>{incomingRequests.length}</span>
+                  <span style={{ fontSize: '2.2rem', fontWeight: 800, color: '#FF9500' }}>{incomingRequests.filter(r => r.status === 'pending').length}</span>
                 </div>
               </div>
             </div>
@@ -1904,14 +1931,14 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                                 padding: '1.2rem', textAlign: 'left', border: '1px solid var(--glass-border)', 
                                 position: 'relative', overflow: 'hidden', cursor: hasVoted ? 'default' : 'pointer',
                                 background: 'white', color: 'var(--text-primary)',
-                                width: '100%', borderRadius: '16px', transition: 'all 0.3s ease',
+                                width: '100%', borderRadius: '16px', transition: 'all 0.15s ease',
                                 boxShadow: 'var(--shadow-sm)'
                               }}
                               onClick={() => !hasVoted && handleVote(event.id, opt)}
                             >
                               <div style={{ 
                                 position: 'absolute', top: 0, left: 0, height: '100%', width: `${percent}%`, 
-                                background: 'var(--accent-light)', transition: 'width 1s cubic-bezier(0.2, 0, 0, 1)' 
+                                background: 'var(--accent-light)', transition: 'width 0.3s cubic-bezier(0.2, 0, 0, 1)' 
                               }}></div>
                               <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: '0.95rem', zIndex: 1 }}>
                                 <span>{opt}</span>
@@ -1938,6 +1965,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                           )}
                         </>
                       ) : (() => {
+                        if (event.creator_id === profile.id) return null;
                         const hasRequested = event.join_requests?.find(r => r.applicant_id === profile.id);
                         if (hasRequested) {
                           return (
@@ -2155,7 +2183,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                             <Trash2 size={20} />
                           </button>
                         )}
-                        {(() => {
+                        {listing.creator_id === profile.id ? null : (() => {
                           const hasRequested = listing.join_requests?.find(r => r.applicant_id === profile.id);
                           if (hasRequested) {
                             return (
@@ -3032,7 +3060,12 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                         {viewProfileData.github_url && <a href={viewProfileData.github_url} target="_blank" rel="noreferrer" className="badge badge-purple" style={{ textDecoration: 'none', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}><GitBranch size={12} style={{marginRight: '4px', display: 'inline-block', verticalAlign: 'middle'}}/> GitHub</a>}
                         {viewProfileData.linkedin_url && <a href={viewProfileData.linkedin_url} target="_blank" rel="noreferrer" className="badge badge-blue" style={{ textDecoration: 'none', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}><Globe size={12} style={{marginRight: '4px', display: 'inline-block', verticalAlign: 'middle'}}/> LinkedIn</a>}
                         {viewProfileData.resume_url && <a href={viewProfileData.resume_url} target="_blank" rel="noreferrer" className="badge badge-green" style={{ textDecoration: 'none', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}><FileText size={12} style={{marginRight: '4px', display: 'inline-block', verticalAlign: 'middle'}}/> Resume</a>}
-                        {viewProfileData.whatsapp_no && <a href={`https://wa.me/${viewProfileData.whatsapp_no.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="badge badge-green" style={{ textDecoration: 'none', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}><MessageCircle size={12} style={{marginRight: '4px', display: 'inline-block', verticalAlign: 'middle'}}/> WhatsApp</a>}
+                        {viewProfileData.whatsapp_no && viewProfileData.isMutualTeam && <a href={`https://wa.me/${viewProfileData.whatsapp_no.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="badge badge-green" style={{ textDecoration: 'none', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}><MessageCircle size={12} style={{marginRight: '4px', display: 'inline-block', verticalAlign: 'middle'}}/> WhatsApp</a>}
+                        {(!viewProfileData.isMutualTeam || !viewProfileData.whatsapp_no) && viewProfileData.id !== profile.id && (
+                          <button className="badge badge-blue" style={{ border: 'none', cursor: 'pointer', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => { setViewProfileId(null); setActiveChat({ receiverId: viewProfileData.id, teamName: 'Chat with ' + viewProfileData.full_name }); }}>
+                            <MessageCircle size={12} style={{marginRight: '4px', display: 'inline-block', verticalAlign: 'middle'}}/> Message
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -3101,6 +3134,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
         <TeamChat
           teamId={activeChat.teamId}
           listingId={activeChat.listingId}
+          receiverId={activeChat.receiverId}
           teamName={activeChat.teamName}
           currentUser={profile}
           onClose={() => setActiveChat(null)}

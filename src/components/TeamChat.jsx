@@ -3,7 +3,7 @@ import { Send, X, MessageCircle, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { sendNotification } from '../lib/notifications';
 
-export default function TeamChat({ teamId, listingId, teamName, currentUser, onClose }) {
+export default function TeamChat({ teamId, listingId, receiverId, teamName, currentUser, onClose }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -27,15 +27,34 @@ export default function TeamChat({ teamId, listingId, teamName, currentUser, onC
   }, [messages]);
 
   const fetchMessages = async () => {
-    const { data } = await supabase
-      .from('team_messages')
-      .select('*')
-      .eq(filterKey, filterId)
-      .order('created_at', { ascending: true })
-      .limit(100);
-    if (data) {
-      setMessages(data);
-      setLoading(false);
+    if (receiverId) {
+      const { data } = await supabase
+        .from('messages')
+        .select('*, profiles!messages_sender_id_fkey(full_name)')
+        .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${currentUser.id})`)
+        .order('created_at', { ascending: true })
+        .limit(100);
+      
+      if (data) {
+        // Map messages to TeamChat format
+        const mapped = data.map(m => ({
+          ...m,
+          sender_name: m.profiles?.full_name || 'User'
+        }));
+        setMessages(mapped);
+        setLoading(false);
+      }
+    } else {
+      const { data } = await supabase
+        .from('team_messages')
+        .select('*')
+        .eq(filterKey, filterId)
+        .order('created_at', { ascending: true })
+        .limit(100);
+      if (data) {
+        setMessages(data);
+        setLoading(false);
+      }
     }
   };
 
@@ -53,16 +72,27 @@ export default function TeamChat({ teamId, listingId, teamName, currentUser, onC
       sender_name: currentUser.full_name,
       content,
       created_at: new Date().toISOString(),
-      ...chatKey
+      ...(receiverId ? { receiver_id: receiverId } : chatKey)
     };
     setMessages(prev => [...prev, optimistic]);
 
-    const { error } = await supabase.from('team_messages').insert([{
-      ...chatKey,
-      sender_id: currentUser.id,
-      sender_name: currentUser.full_name,
-      content
-    }]);
+    let error;
+    if (receiverId) {
+      const res = await supabase.from('messages').insert([{
+        sender_id: currentUser.id,
+        receiver_id: receiverId,
+        content
+      }]);
+      error = res.error;
+    } else {
+      const res = await supabase.from('team_messages').insert([{
+        ...chatKey,
+        sender_id: currentUser.id,
+        sender_name: currentUser.full_name,
+        content
+      }]);
+      error = res.error;
+    }
 
     if (!error) {
       notifyTeam(content);
@@ -78,7 +108,9 @@ export default function TeamChat({ teamId, listingId, teamName, currentUser, onC
     try {
       let recipientIds = [];
       
-      if (teamId) {
+      if (receiverId) {
+        recipientIds = [receiverId];
+      } else if (teamId) {
         const { data } = await supabase.from('team_members').select('user_id').eq('team_id', teamId);
         recipientIds = data?.map(m => m.user_id) || [];
       } else if (listingId) {
@@ -90,24 +122,29 @@ export default function TeamChat({ teamId, listingId, teamName, currentUser, onC
       const others = recipientIds.filter(id => id && id !== currentUser.id);
       if (others.length === 0) return;
 
+      const title = receiverId ? `Direct Message from ${currentUser.full_name}` : `New message in ${teamName}`;
+      const url = receiverId ? 'https://mechatronics-phi.vercel.app/dashboard' : 'https://mechatronics-phi.vercel.app/dashboard/teams';
+
       // 1. In-app notifications
       const notifications = others.map(uid => ({
         user_id: uid,
-        title: `New message in ${teamName}`,
+        title,
         body: `${currentUser.full_name}: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`,
         type: 'chat',
-        link: '/dashboard/teams'
+        link: url
       }));
       await supabase.from('in_app_notifications').insert(notifications);
 
       // 2. OneSignal notifications (Push + Email)
       sendNotification({
         userIds: others,
-        title: teamName,
+        title: receiverId ? 'New Direct Message' : teamName,
         body: `${currentUser.full_name}: ${content.substring(0, 100)}`,
-        url: 'https://mechatronics-phi.vercel.app/dashboard/teams',
-        emailSubject: `New message in ${teamName}`,
-        emailBody: `${currentUser.full_name} sent a new message in ${teamName}: "${content.substring(0, 200)}${content.length > 200 ? '...' : ''}"`
+        url,
+        emailSubject: title,
+        emailBody: receiverId 
+          ? `${currentUser.full_name} sent you a direct message: "${content.substring(0, 200)}${content.length > 200 ? '...' : ''}"`
+          : `${currentUser.full_name} sent a new message in ${teamName}: "${content.substring(0, 200)}${content.length > 200 ? '...' : ''}"`
       });
 
     } catch (err) {
