@@ -27,7 +27,10 @@ class ErrorBoundary extends React.Component {
           <button 
             className="btn btn-secondary" 
             style={{ marginTop: '1rem', padding: '0.5rem 1rem', fontSize: '0.85rem' }}
-            onClick={() => this.setState({ hasError: false })}
+            onClick={() => {
+              this.setState({ hasError: false });
+              window.location.reload();
+            }}
           >
             Try Again
           </button>

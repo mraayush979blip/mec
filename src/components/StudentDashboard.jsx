@@ -169,6 +169,14 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   const [isLikeLoading, setIsLikeLoading] = useState({});
   const [commentInputs, setCommentInputs] = useState({}); // {postId: 'text'}
 
+  if (!profile) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column' }}>
+        <p style={{ color: 'var(--text-secondary)' }}>Loading Dashboard...</p>
+      </div>
+    );
+  }
+
   // Global Chat State
 
   const [activeChat, setActiveChat] = useState(null); // { teamId, listingId, teamName }
