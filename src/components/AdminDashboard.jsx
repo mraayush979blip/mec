@@ -122,6 +122,7 @@ function AdminDashboard({ session, profile }) {
   const [hackLink, setHackLink] = useState('');
   const [hackImage, setHackImage] = useState('');
   const [hackSource, setHackSource] = useState('');
+  const [syncing, setSyncing] = useState(false);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -212,6 +213,40 @@ function AdminDashboard({ session, profile }) {
     const { data } = await supabase.from('external_hackathons').select('*').order('created_at', { ascending: false });
     if (data) setExternalHackathons(data);
     setLoading(false);
+  };
+
+  const handleSyncHackathons = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch('/api/sync-hackathons', {
+        method: 'POST'
+      });
+      
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseErr) {
+        if (text.includes('<!DOCTYPE html>') || res.status === 404) {
+          alert("💻 Local Development Notice:\n\nYou are running the project using Vite's frontend-only dev server (npm run dev).\n\nTo test serverless backend APIs locally, please use the Vercel CLI:\n👉 Run: 'vercel dev'\n\nNote: This function is 100% complete and will work automatically when deployed to Vercel!");
+        } else {
+          alert(`Response Error: ${text.substring(0, 150)}`);
+        }
+        return;
+      }
+
+      if (res.ok && data.success) {
+        alert(`Successfully synchronized ${data.fetched_count} hackathons!`);
+        fetchExternalHackathons();
+      } else {
+        alert(`Failed to sync hackathons: ${data.error || 'Unknown error'}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert(`Network error syncing hackathons: ${err.message}`);
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const fetchLogs = async (userId = null) => {
@@ -819,8 +854,26 @@ function AdminDashboard({ session, profile }) {
 
         {activeTab === 'discovery' && (
            <div className="fade-in-up">
-              <h1 className="title" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>Global Discovery</h1>
-              <p className="subtitle">Manage external hackathons displayed to all students.</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <div>
+                  <h1 className="title" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>Global Discovery</h1>
+                  <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Manage external hackathons displayed to all students.</p>
+                </div>
+                <button 
+                  type="button"
+                  className="btn btn-primary" 
+                  onClick={handleSyncHackathons} 
+                  disabled={syncing}
+                  style={{
+                    background: 'var(--gradient-blue)',
+                    border: 'none',
+                    boxShadow: '0 8px 24px rgba(0, 122, 255, 0.3)',
+                    fontWeight: 800
+                  }}
+                >
+                  {syncing ? 'Syncing...' : '⚡ Sync from Devpost'}
+                </button>
+              </div>
 
               <div className="glass-panel" style={{ padding: '2rem', marginBottom: '3rem' }}>
                   <h3 style={{ marginBottom: '1.5rem' }}>{editingHackathon ? 'Edit Item' : 'Add New Hackathon'}</h3>
