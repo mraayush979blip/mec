@@ -725,9 +725,9 @@ body {
 
 /* Animations */
 .fade-in-up {
-  animation: fadeInUp 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  animation: fadeInUp 0.35s cubic-bezier(0.23, 1, 0.32, 1) forwards;
   opacity: 0;
-  transform: translateY(30px);
+  transform: translateY(20px);
 }
 
 .delay-1 { animation-delay: 0.2s; }

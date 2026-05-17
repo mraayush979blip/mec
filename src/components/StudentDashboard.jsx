@@ -144,6 +144,39 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showPortfolio, setShowPortfolio] = useState(false);
+  const [showLinkedInWarning, setShowLinkedInWarning] = useState(false);
+
+  const isLinkedInVerified = session?.user?.identities?.some(i => i.provider === 'linkedin_oidc');
+
+  const requireLinkedIn = () => {
+    if (!profile?.linkedin_url || !isLinkedInVerified) {
+      setShowLinkedInWarning(true);
+      return false;
+    }
+    return true;
+  };
+
+  const handleAuthorizeLinkedIn = async () => {
+    try {
+      const { data, error } = await supabase.auth.linkIdentity({ 
+        provider: 'linkedin_oidc',
+        options: {
+          redirectTo: window.location.origin + '/dashboard/profile'
+        }
+      });
+      if (error) throw error;
+    } catch (err) {
+      alert("LinkedIn OAuth not fully configured yet: " + err.message);
+    }
+  };
+
+  useEffect(() => {
+    if (isLinkedInVerified && profile && !profile.is_verified) {
+      supabase.from('profiles').update({ is_verified: true }).eq('id', profile.id).then(({ error }) => {
+        if (error) console.log("Note: Please add is_verified BOOLEAN column to your profiles table in Supabase.");
+      });
+    }
+  }, [isLinkedInVerified, profile]);
 
   const [skillSearch, setSkillSearch] = useState('');
 
@@ -243,7 +276,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   const fetchFeed = async () => {
     const { data, error } = await supabase
       .from('activity_posts')
-      .select('*, profiles(full_name, avatar_url, dev_role)')
+      .select('*, profiles(full_name, is_verified, avatar_url, dev_role)')
       .order('created_at', { ascending: false });
     
     if (!error && data) {
@@ -252,6 +285,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   };
 
   const handleCreatePost = async () => {
+    if (!requireLinkedIn()) return;
     if (!newPostContent.trim()) return;
     
     setIsPosting(true);
@@ -303,6 +337,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   };
 
   const handleLikePost = async (postId, currentLikes = []) => {
+    if (!requireLinkedIn()) return;
     const myId = session.user.id;
     const isLiked = currentLikes?.includes(myId);
     const newLikes = isLiked 
@@ -323,6 +358,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   };
 
   const handleAddComment = async (postId, existingComments = []) => {
+    if (!requireLinkedIn()) return;
     const text = commentInputs[postId];
     if (!text?.trim()) return;
 
@@ -475,7 +511,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
     setLoadingListings(true);
     const { data, error } = await supabase
       .from('team_listings')
-      .select('*, profiles!team_listings_creator_id_fkey(full_name, dev_role, skills), join_requests(applicant_id, status, profiles:profiles!join_requests_applicant_id_fkey(full_name))')
+      .select('*, profiles!team_listings_creator_id_fkey(full_name, is_verified, dev_role, skills), join_requests(applicant_id, status, profiles:profiles!join_requests_applicant_id_fkey(full_name, is_verified))')
       .order('created_at', { ascending: false });
     
     if (error) {
@@ -498,6 +534,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
 
   const handleCreateListing = async (e) => {
     e.preventDefault();
+    if (!requireLinkedIn()) return;
     if (!profile?.id) {
       alert("Profile not loaded. Please refresh.");
       return;
@@ -556,6 +593,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   };
 
   const handleApplyToListing = async (listingId) => {
+    if (!requireLinkedIn()) return;
     if (isApplying) return;
     const role = window.prompt("Which role are you applying for? (e.g. Frontend, Designer, etc.)");
     if (!role) {
@@ -619,7 +657,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
     // Fetch Student Listings
     const { data: studentListings, error: listError } = await supabase
       .from('team_listings')
-      .select('*, profiles!team_listings_creator_id_fkey(full_name, dev_role, skills), join_requests(applicant_id, status, profiles:profiles!join_requests_applicant_id_fkey(full_name))')
+      .select('*, profiles!team_listings_creator_id_fkey(full_name, is_verified, dev_role, skills), join_requests(applicant_id, status, profiles:profiles!join_requests_applicant_id_fkey(full_name, is_verified))')
       .order('created_at', { ascending: false });
     
     if (listError) console.error("Error fetching student listings for feed:", listError);
@@ -675,6 +713,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   };
 
   const handleVote = async (eventId, option) => {
+    if (!requireLinkedIn()) return;
     if (isApplying) return;
     setIsApplying(true);
     try {
@@ -856,7 +895,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
         *,
         teams:teams!team_id(
           team_name,
-          profiles:profiles!teams_creator_id_fkey(full_name)
+          profiles:profiles!teams_creator_id_fkey(full_name, is_verified)
         )
       `)
       .eq('applicant_id', profile.id)
@@ -879,7 +918,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
         .select(`
           *,
           teams:teams!team_id(team_name, events:events!event_id(title)),
-          profiles:profiles!join_requests_applicant_id_fkey(full_name, skills, branch, email, github_url, linkedin_url, resume_url)
+          profiles:profiles!join_requests_applicant_id_fkey(full_name, is_verified, skills, branch, email, github_url, linkedin_url, resume_url)
         `)
         .in('team_id', teamIds)
         .eq('source', 'application')
@@ -894,7 +933,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
         .select(`
           *,
           team_listings:team_listings!listing_id(team_name, hackathon_name),
-          profiles:profiles!join_requests_applicant_id_fkey(full_name, skills, branch, email, github_url, linkedin_url, resume_url)
+          profiles:profiles!join_requests_applicant_id_fkey(full_name, is_verified, skills, branch, email, github_url, linkedin_url, resume_url)
         `)
         .in('listing_id', listingIds)
         .eq('source', 'application')
@@ -909,7 +948,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
         .select(`
           *,
           teams:teams!team_id(team_name, events:events!event_id(title)),
-          profiles:profiles!join_requests_applicant_id_fkey(full_name, skills)
+          profiles:profiles!join_requests_applicant_id_fkey(full_name, is_verified, skills)
         `)
         .in('team_id', teamIds)
         .eq('source', 'invitation')
@@ -941,7 +980,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
         *,
         teams:teams!team_id(team_name),
         team_listings:team_listings!listing_id(team_name),
-        profiles:profiles!join_requests_applicant_id_fkey(full_name)
+        profiles:profiles!join_requests_applicant_id_fkey(full_name, is_verified)
       `)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -1004,6 +1043,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   };
 
   const handleInviteStudent = async (studentId) => {
+    if (!requireLinkedIn()) return;
     if (!myTeamForEvent) return;
     setInvitingId(studentId);
     const { error } = await supabase.from('join_requests').insert([
@@ -1047,6 +1087,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
 
   const handleCreateTeam = async (e) => {
     e.preventDefault();
+    if (!requireLinkedIn()) return;
     if (myTeamForEvent) {
       // Update existing team
       const { error } = await supabase
@@ -1084,18 +1125,18 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
       .from('teams')
       .select(`
         *,
-        profiles:profiles!teams_creator_id_fkey(full_name, dev_role),
+        profiles:profiles!teams_creator_id_fkey(full_name, is_verified, dev_role),
         team_members(
           user_id,
           role,
-          profiles:profiles!team_members_user_id_fkey(full_name)
+          profiles:profiles!team_members_user_id_fkey(full_name, is_verified)
         ),
         join_requests(
           id,
           status,
           source,
           applicant_id,
-          profiles:profiles!join_requests_applicant_id_fkey(full_name)
+          profiles:profiles!join_requests_applicant_id_fkey(full_name, is_verified)
         )
       `)
       .eq('event_id', selectedEvent.id);
@@ -1109,6 +1150,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   };
 
   const handleRequestJoin = async (teamId) => {
+    if (!requireLinkedIn()) return;
     if (isApplying) return;
     const role = window.prompt("Which role are you applying for? (e.g. Frontend, Backend, Presenter, etc.)");
     if (!role) {
@@ -1146,7 +1188,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
           team_members(
             user_id,
             role,
-            profiles:profiles!team_members_user_id_fkey(full_name, dev_role, skills, branch, whatsapp_no)
+            profiles:profiles!team_members_user_id_fkey(full_name, is_verified, dev_role, skills, branch, whatsapp_no)
           )
         `)
         .eq('creator_id', profile.id);
@@ -1162,7 +1204,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
             team_members(
               user_id,
               role,
-              profiles:profiles!team_members_user_id_fkey(full_name, dev_role, skills, branch, whatsapp_no)
+              profiles:profiles!team_members_user_id_fkey(full_name, is_verified, dev_role, skills, branch, whatsapp_no)
             )
           )
         `)
@@ -1176,7 +1218,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
           join_requests(
             applicant_id,
             status,
-            profiles:profiles!join_requests_applicant_id_fkey(full_name, dev_role, skills, branch, whatsapp_no)
+            profiles:profiles!join_requests_applicant_id_fkey(full_name, is_verified, dev_role, skills, branch, whatsapp_no)
           )
         `)
         .eq('creator_id', profile.id);
@@ -1188,11 +1230,11 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
           listing_id,
           team_listings(
             *,
-            profiles:profiles!team_listings_creator_id_fkey(full_name, dev_role, skills, branch, whatsapp_no),
+            profiles:profiles!team_listings_creator_id_fkey(full_name, is_verified, dev_role, skills, branch, whatsapp_no),
             join_requests(
               applicant_id,
               status,
-              profiles:profiles!join_requests_applicant_id_fkey(full_name, dev_role, skills, branch, whatsapp_no)
+              profiles:profiles!join_requests_applicant_id_fkey(full_name, is_verified, dev_role, skills, branch, whatsapp_no)
             )
           )
         `)
@@ -1662,7 +1704,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                               alt="avatar"
                             />
                           <div>
-                            <h4 style={{ fontWeight: 800, fontSize: '0.95rem', margin: 0, color: 'var(--text-primary)' }}>{post.profiles?.full_name}</h4>
+                            <h4 style={{ fontWeight: 800, fontSize: '0.95rem', margin: 0, color: 'var(--text-primary)' }}>{post.profiles?.full_name}{post.profiles?.is_verified && <CheckCircle size={12} color="#34C759" style={{marginLeft: "4px", display: "inline-block", verticalAlign: "middle"}}/>}</h4>
                             <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
                               {post.profiles?.dev_role?.split(' ')[0] || 'Member'} • {new Date(post.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                             </p>
@@ -1853,7 +1895,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                           boxShadow: `0 0 10px ${event.source_type === 'admin' ? 'rgba(0,122,255,0.5)' : 'rgba(175,82,222,0.5)'}`
                         }}></div>
                         <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.02em', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-                          {event.source_type === 'admin' ? 'Official Update' : <>Recruitment • <span style={{ color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleViewProfile(event.creator_id)}>{event.profiles?.full_name}</span></>}
+                          {event.source_type === 'admin' ? 'Official Update' : <>Recruitment • <span style={{ color: "var(--accent)", cursor: "pointer", textDecoration: "underline" }} onClick={() => handleViewProfile(event.creator_id)}>{event.profiles?.full_name}</span>{event.profiles?.is_verified && <CheckCircle size={10} color="#34C759" style={{marginLeft: "4px", verticalAlign: "middle"}}/>}</>}
                         </span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
@@ -2273,7 +2315,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                           {listing.profiles?.full_name?.charAt(0)}
                         </div>
                         <div>
-                          <p style={{ fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.01em', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleViewProfile(listing.creator_id)}>{listing.profiles?.full_name}</p>
+                          <p style={{ fontWeight: 800, fontSize: "1.1rem", letterSpacing: "-0.01em", cursor: "pointer", textDecoration: "underline", display: "flex", alignItems: "center" }} onClick={() => handleViewProfile(listing.creator_id)}>{listing.profiles?.full_name}{listing.profiles?.is_verified && <CheckCircle size={14} color="#34C759" style={{marginLeft: "6px"}}/>}</p>
                           <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{listing.profiles?.dev_role || 'Team Lead'}</p>
                         </div>
                       </div>
@@ -2360,7 +2402,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                             {student.full_name.charAt(0)}
                           </div>
                           <div>
-                            <p style={{ fontWeight: 800, cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleViewProfile(student.id)}>{student.full_name}</p>
+                            <p style={{ fontWeight: 800, cursor: "pointer", textDecoration: "underline", display: "flex", alignItems: "center" }} onClick={() => handleViewProfile(student.id)}>{student.full_name}{student.is_verified && <CheckCircle size={14} color="#34C759" style={{marginLeft: "4px"}}/>}</p>
                             <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{student.dev_role} • {student.skills?.slice(0, 3).join(', ')}</p>
                           </div>
                         </div>
@@ -2417,7 +2459,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                     <div>
                       <h3 style={{ fontSize: '1.5rem', fontWeight: 800 }}>{team.icon_url} {team.team_name}</h3>
-                      <p style={{ color: 'var(--accent)', fontWeight: 700, cursor: 'pointer' }} onClick={() => handleViewProfile(team.creator_id)}>Lead: <span style={{ textDecoration: 'underline' }}>{team.profiles?.full_name}</span></p>
+                      <p style={{ color: 'var(--accent)', fontWeight: 700, cursor: 'pointer' }} onClick={() => handleViewProfile(team.creator_id)}>Lead: <span style={{ textDecoration: "underline" }}>{team.profiles?.full_name}</span>{team.profiles?.is_verified && <CheckCircle size={12} color="#34C759" style={{marginLeft: "4px", verticalAlign: "middle"}}/>}</p>
                       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                         <span className="badge badge-blue" style={{ fontSize: '0.65rem' }}>{members.length} member{members.length !== 1 ? 's' : ''}</span>
                         {pendingApps.length > 0 && <span className="badge badge-purple" style={{ fontSize: '0.65rem' }}>{pendingApps.length} pending</span>}
@@ -2818,7 +2860,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                                 {member.profiles?.full_name?.charAt(0)}
                               </div>
                               <div>
-                                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', color: 'var(--accent)' }} onClick={() => handleViewProfile(member.user_id)}>{member.profiles?.full_name}</h4>
+                                <h4 style={{ fontSize: "0.95rem", fontWeight: 700, cursor: "pointer", textDecoration: "underline", color: "var(--accent)", display: "flex", alignItems: "center" }} onClick={() => handleViewProfile(member.user_id)}>{member.profiles?.full_name}{member.profiles?.is_verified && <CheckCircle size={12} color="#34C759" style={{marginLeft: "4px"}}/>}</h4>
                                 <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{member.profiles?.dev_role || 'Specialist'}</p>
                               </div>
                             </div>
@@ -2868,7 +2910,11 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                 <div>
                     <h2 style={{ fontSize: '2.2rem', fontWeight: 800, marginBottom: '0.2rem' }}>{profile?.full_name}</h2>
                     <p style={{ color: 'var(--text-secondary)', fontWeight: 600, fontSize: '1.1rem' }}>{profile?.dev_role || 'Mechatronics Engineer'}</p>
-                    <div className="badge badge-green" style={{ marginTop: '0.8rem' }}>Verified Account</div>
+                    {profile?.is_verified ? (
+                      <div className="badge badge-green" style={{ marginTop: '0.8rem' }}><CheckCircle size={14} style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'middle' }}/> Verified Account</div>
+                    ) : (
+                      <div className="badge badge-red" style={{ marginTop: '0.8rem', background: 'rgba(255, 59, 48, 0.1)', color: '#FF3B30' }}><XCircle size={14} style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'middle' }}/> Unverified Account - Please authorize LinkedIn below</div>
+                    )}
                 </div>
               </div>
 
@@ -2890,11 +2936,21 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                   <input type="text" className="glass-input" value={formSkills} onChange={(e)=>setFormSkills(e.target.value)} />
                 </div>
                 <div className="input-group">
-                  <label className="input-label">LinkedIn Profile</label>
+                  <label className="input-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>LinkedIn Profile URL</span>
+                    {isLinkedInVerified ? (
+                      <span className="badge badge-green" style={{ fontSize: '0.7rem' }}><CheckCircle size={10} style={{ marginRight: '4px', display: 'inline-block' }}/> Verified</span>
+                    ) : (
+                      <button type="button" onClick={handleAuthorizeLinkedIn} className="badge badge-blue" style={{ cursor: 'pointer', border: 'none', display: 'flex', gap: '0.4rem', alignItems: 'center' }}><Globe size={12}/> Authorize</button>
+                    )}
+                  </label>
                   <div style={{ position: 'relative' }}>
                     <Globe size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                     <input type="url" className="glass-input" style={{ paddingLeft: '3rem' }} value={formLinkedin} onChange={(e)=>setFormLinkedin(e.target.value)} placeholder="https://..." />
                   </div>
+                  {!isLinkedInVerified && (
+                     <p style={{ fontSize: '0.7rem', color: 'var(--accent)', marginTop: '0.4rem', fontWeight: 600 }}>Click Authorize above to verify your identity via LinkedIn OAuth.</p>
+                  )}
                 </div>
                 <div className="input-group">
                   <label className="input-label">GitHub Profile</label>
@@ -3062,11 +3118,18 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                       {viewProfileData.avatar_url ? <img src={viewProfileData.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (viewProfileData.full_name?.charAt(0) || '?')}
                     </div>
                     <div style={{ flex: 1, minWidth: '200px' }}>
-                      <h2 style={{ fontSize: 'clamp(1.4rem, 5vw, 1.8rem)', fontWeight: 800, lineHeight: 1.2, marginBottom: '0.2rem' }}>{viewProfileData.full_name}</h2>
+                      <h2 style={{ fontSize: 'clamp(1.4rem, 5vw, 1.8rem)', fontWeight: 800, lineHeight: 1.2, marginBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        {viewProfileData.full_name}
+                        {viewProfileData.is_verified ? (
+                          <CheckCircle size={22} color="#34C759" title="Verified Member" />
+                        ) : (
+                          <span className="badge" style={{ background: 'rgba(255, 59, 48, 0.1)', color: '#FF3B30', fontSize: '0.65rem', padding: '0.3rem 0.6rem' }}><XCircle size={12} style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'middle' }}/> UNVERIFIED</span>
+                        )}
+                      </h2>
                       <p style={{ color: 'var(--accent)', fontWeight: 700, fontSize: 'clamp(0.9rem, 3vw, 1.1rem)' }}>{viewProfileData.dev_role || 'Developer'}</p>
                       <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.8rem', flexWrap: 'wrap' }}>
                         {viewProfileData.github_url && <a href={viewProfileData.github_url} target="_blank" rel="noreferrer" className="badge badge-purple" style={{ textDecoration: 'none', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}><GitBranch size={12} style={{marginRight: '4px', display: 'inline-block', verticalAlign: 'middle'}}/> GitHub</a>}
-                        {viewProfileData.linkedin_url && <a href={viewProfileData.linkedin_url} target="_blank" rel="noreferrer" className="badge badge-blue" style={{ textDecoration: 'none', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}><Globe size={12} style={{marginRight: '4px', display: 'inline-block', verticalAlign: 'middle'}}/> LinkedIn</a>}
+                        {(viewProfileData.linkedin_url && viewProfileData.is_verified) && <a href={viewProfileData.linkedin_url} target="_blank" rel="noreferrer" className="badge badge-blue" style={{ textDecoration: 'none', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}><Globe size={12} style={{marginRight: '4px', display: 'inline-block', verticalAlign: 'middle'}}/> LinkedIn</a>}
                         {viewProfileData.resume_url && <a href={viewProfileData.resume_url} target="_blank" rel="noreferrer" className="badge badge-green" style={{ textDecoration: 'none', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}><FileText size={12} style={{marginRight: '4px', display: 'inline-block', verticalAlign: 'middle'}}/> Resume</a>}
                         {viewProfileData.whatsapp_no && viewProfileData.isMutualTeam && <a href={`https://wa.me/${viewProfileData.whatsapp_no.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="badge badge-green" style={{ textDecoration: 'none', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}><MessageCircle size={12} style={{marginRight: '4px', display: 'inline-block', verticalAlign: 'middle'}}/> WhatsApp</a>}
                         {(!viewProfileData.isMutualTeam || !viewProfileData.whatsapp_no) && viewProfileData.id !== profile.id && (
@@ -3147,6 +3210,35 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
           currentUser={profile}
           onClose={() => setActiveChat(null)}
         />
+      )}
+
+      {/* LINKEDIN WARNING MODAL */}
+      {showLinkedInWarning && (
+        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }} onClick={(e) => { if (e.target === e.currentTarget) setShowLinkedInWarning(false); }}>
+          <div className="glass-panel slide-up" style={{ width: '90%', maxWidth: '400px', padding: '2rem', textAlign: 'center', position: 'relative' }}>
+            <div style={{ width: '60px', height: '60px', borderRadius: '20px', background: 'rgba(10, 102, 194, 0.1)', color: '#0A66C2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto' }}>
+              <Globe size={32} />
+            </div>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '0.8rem' }}>LinkedIn Profile Required</h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+              To ensure a professional and verified community, you must connect your LinkedIn profile before you can interact, apply for roles, or form teams.
+            </p>
+            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', textAlign: 'left', marginBottom: '1.5rem' }}>
+              <p style={{ fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Verification Steps:</p>
+              <ol style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', paddingLeft: '1.2rem', margin: 0, lineHeight: 1.6 }}>
+                <li>Go to your <strong>Profile</strong> tab</li>
+                <li>Tap <strong>Edit Profile</strong></li>
+                <li>Paste your LinkedIn URL</li>
+                <li>Click the blue <strong>Authorize</strong> button to verify</li>
+                <li>Save Changes</li>
+              </ol>
+            </div>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button className="btn btn-secondary" style={{ flex: 1, padding: '0.8rem' }} onClick={() => setShowLinkedInWarning(false)}>Cancel</button>
+              <button className="btn btn-primary" style={{ flex: 1, padding: '0.8rem', background: '#0A66C2' }} onClick={() => { setShowLinkedInWarning(false); handleTabChange('profile'); }}>Go to Profile</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
