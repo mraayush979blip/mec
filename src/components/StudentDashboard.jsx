@@ -173,7 +173,12 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
   useEffect(() => {
     if (isLinkedInVerified && profile && !profile.is_verified) {
       supabase.from('profiles').update({ is_verified: true }).eq('id', profile.id).then(({ error }) => {
-        if (error) console.log("Note: Please add is_verified BOOLEAN column to your profiles table in Supabase.");
+        if (error) {
+          console.log("Note: Please add is_verified BOOLEAN column to your profiles table in Supabase.");
+        } else {
+          // Refresh the page so the verified state is updated instantly in the UI
+          window.location.reload();
+        }
       });
     }
   }, [isLinkedInVerified, profile]);
@@ -758,6 +763,9 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
       
       if (error) throw error;
       alert('Professional profile synced with cloud successfully!');
+      
+      // Refresh the page so that any new LinkedIn URL/status is updated and reflected immediately in the UI
+      window.location.reload();
     } catch (error) {
       console.error('Error updating profile:', error);
       alert('Error updating profile: ' + error.message);
