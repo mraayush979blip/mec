@@ -257,11 +257,12 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
 
   const handleShare = async (item, type) => {
     const isEvent = type === 'event';
-    const title = isEvent ? item.title : item.team_name;
-    const description = isEvent ? item.description : item.description;
-    const link = window.location.origin + '/dashboard/' + (isEvent ? 'events' : 'find_member') + '?id=' + item.id;
+    const isPost = type === 'post';
+    const title = isEvent ? item.title : isPost ? `Pulse by ${item.profiles?.full_name}` : item.team_name;
+    const description = isEvent ? item.description : isPost ? item.content : item.description;
+    const link = window.location.origin + '/dashboard/' + (isEvent ? 'events' : isPost ? 'feed' : 'find_member') + '?id=' + item.id;
     
-    const shareText = `Check out this ${isEvent ? 'event' : 'post'} on Mechatronian Hub!\n\n*${title}*\n${description}\n\nLink: ${link}`;
+    const shareText = `Check out this ${isEvent ? 'event' : isPost ? 'post' : 'team'} on Mechatronian Hub!\n\n*${title}*\n${description}\n\nLink: ${link}`;
 
     if (navigator.share) {
       try {
@@ -428,6 +429,22 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
       }, 500);
     }
   }, [listings, location.search, activeTab]);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const id = searchParams.get('id');
+    if (id && feedPosts.length > 0 && activeTab === 'feed') {
+      setTimeout(() => {
+        const el = document.getElementById(`post-${id}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.style.transition = 'box-shadow 0.5s';
+          el.style.boxShadow = '0 0 30px rgba(0,122,255,0.6)';
+          setTimeout(() => el.style.boxShadow = 'none', 3000);
+        }
+      }, 500);
+    }
+  }, [feedPosts, location.search, activeTab]);
 
   const tabs = ['feed', 'events', 'discovery', 'find_member', 'activity', 'teams', 'profile'];
 
@@ -1693,7 +1710,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                     <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>The pulse is quiet. Start the conversation!</p>
                   </div>
                 ) : feedPosts.map(post => (
-                  <div key={post.id} className="glass-panel fade-in-up" style={{ 
+                  <div key={post.id} id={`post-${post.id}`} className="glass-panel fade-in-up" style={{ 
                     padding: '0', 
                     overflow: 'hidden',
                     border: '1px solid var(--glass-border)',
