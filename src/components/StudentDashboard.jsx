@@ -399,50 +399,64 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
 
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
-
     const id = searchParams.get('id');
-    if (id && events.length > 0 && activeTab === 'events') {
-      setTimeout(() => {
+    if (id && activeTab === 'events') {
+      let attempts = 0;
+      const interval = setInterval(() => {
         const el = document.getElementById(`event-${id}`);
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           el.style.transition = 'box-shadow 0.5s';
           el.style.boxShadow = '0 0 30px rgba(175,82,222,0.6)';
           setTimeout(() => el.style.boxShadow = '0 10px 30px rgba(0,0,0,0.2)', 3000);
+          clearInterval(interval);
         }
-      }, 500);
+        attempts++;
+        if (attempts > 20) clearInterval(interval);
+      }, 100);
+      return () => clearInterval(interval);
     }
   }, [events, location.search, activeTab]);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const id = searchParams.get('id');
-    if (id && listings.length > 0 && activeTab === 'find_member') {
-      setTimeout(() => {
+    if (id && activeTab === 'find_member') {
+      let attempts = 0;
+      const interval = setInterval(() => {
         const el = document.getElementById(`listing-${id}`);
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           el.style.transition = 'box-shadow 0.5s';
           el.style.boxShadow = '0 0 30px rgba(0,122,255,0.6)';
           setTimeout(() => el.style.boxShadow = 'var(--shadow-md)', 3000);
+          clearInterval(interval);
         }
-      }, 500);
+        attempts++;
+        if (attempts > 20) clearInterval(interval);
+      }, 100);
+      return () => clearInterval(interval);
     }
   }, [listings, location.search, activeTab]);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const id = searchParams.get('id');
-    if (id && feedPosts.length > 0 && activeTab === 'feed') {
-      setTimeout(() => {
+    if (id && activeTab === 'feed') {
+      let attempts = 0;
+      const interval = setInterval(() => {
         const el = document.getElementById(`post-${id}`);
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           el.style.transition = 'box-shadow 0.5s';
           el.style.boxShadow = '0 0 30px rgba(0,122,255,0.6)';
           setTimeout(() => el.style.boxShadow = 'none', 3000);
+          clearInterval(interval);
         }
-      }, 500);
+        attempts++;
+        if (attempts > 20) clearInterval(interval);
+      }, 100);
+      return () => clearInterval(interval);
     }
   }, [feedPosts, location.search, activeTab]);
 

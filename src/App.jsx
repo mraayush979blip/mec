@@ -405,9 +405,14 @@ function App() {
             <Routes>
               {/* LANDING PAGE */}
               <Route path="/" element={
-                session ? (
-                  profile?.role === 'admin' ? <Navigate to="/admin/overview" replace /> : <Navigate to="/dashboard/events" replace />
-                ) : (
+                session ? (() => {
+                  const redirectTo = sessionStorage.getItem('redirect_to');
+                  if (redirectTo) {
+                    sessionStorage.removeItem('redirect_to');
+                    return <Navigate to={redirectTo} replace />;
+                  }
+                  return profile?.role === 'admin' ? <Navigate to="/admin/overview" replace /> : <Navigate to="/dashboard/events" replace />;
+                })() : (
                   <>
                     <div className="background-blobs">
                       <div className="blob blob-1"></div>
@@ -463,7 +468,14 @@ function App() {
 
               {/* AUTH ROUTES */}
               <Route path="/login" element={
-                session ? <Navigate to="/" replace /> : (
+                session ? (() => {
+                  const redirectTo = sessionStorage.getItem('redirect_to');
+                  if (redirectTo) {
+                    sessionStorage.removeItem('redirect_to');
+                    return <Navigate to={redirectTo} replace />;
+                  }
+                  return <Navigate to="/" replace />;
+                })() : (
                   <AuthLayout>
                     <h1 className="title fade-in-up delay-1" style={{ fontSize: '2.5rem' }}>Welcome Back.</h1>
                     <p className="subtitle fade-in-up delay-2">Log in to manage teams, vote on polls, and connect with peers.</p>
@@ -488,7 +500,14 @@ function App() {
               } />
 
               <Route path="/signup" element={
-                session ? <Navigate to="/" replace /> : (
+                session ? (() => {
+                  const redirectTo = sessionStorage.getItem('redirect_to');
+                  if (redirectTo) {
+                    sessionStorage.removeItem('redirect_to');
+                    return <Navigate to={redirectTo} replace />;
+                  }
+                  return <Navigate to="/" replace />;
+                })() : (
                   <AuthLayout>
                     {!isOtpSent ? (
                       <>
@@ -610,7 +629,10 @@ function App() {
 
               <Route path="/dashboard" element={<Navigate to="/dashboard/events" replace />} />
               <Route path="/dashboard/:tab" element={
-                !session ? <Navigate to="/login" replace /> : (profile?.role !== 'admin' ? <StudentDashboard session={session} profile={profile} deferredPrompt={deferredPrompt} isInstalled={isInstalled} /> : <Navigate to="/admin" replace />)
+                !session ? (() => {
+                  sessionStorage.setItem('redirect_to', window.location.pathname + window.location.search);
+                  return <Navigate to="/login" replace />;
+                })() : (profile?.role !== 'admin' ? <StudentDashboard session={session} profile={profile} deferredPrompt={deferredPrompt} isInstalled={isInstalled} /> : <Navigate to="/admin" replace />)
               } />
 
               {/* Catch-all */}
