@@ -438,10 +438,7 @@ function App() {
     <div style={{ position: 'relative', minHeight: '100vh' }}>
       <ErrorBoundary>
         <Suspense fallback={<PremiumLoader fullScreen message="Loading your dashboard..." />}>
-          {initializing || (loadingProfile && session) ? (
-            <PremiumLoader fullScreen message={initializing ? "Preparing your exclusive experience..." : "Loading your dashboard..."} />
-          ) : (
-            <Routes>
+          <Routes>
               {/* LANDING PAGE */}
               <Route path="/" element={
                 (session && authFlow !== 'reset_password') ? (() => {
@@ -743,6 +740,11 @@ function App() {
               {/* Catch-all */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+          
+          {(initializing || (loadingProfile && session)) && (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 99999 }}>
+              <PremiumLoader fullScreen message={initializing ? "Preparing your exclusive experience..." : "Loading your dashboard..."} />
+            </div>
           )}
         </Suspense>
       </ErrorBoundary>
