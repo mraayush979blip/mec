@@ -190,6 +190,25 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled, showT
     }
   }, [isLinkedInVerified, profile]);
 
+  // Sync profile data into form state when profile loads
+  useEffect(() => {
+    if (profile) {
+      setFormName(profile.full_name || '');
+      setFormSkills(profile.skills?.join(', ') || '');
+      setFormWhatsapp(profile.whatsapp_no || '');
+      setFormLinkedin(profile.linkedin_url || '');
+      setFormGithub(profile.github_url || '');
+      setFormBio(profile.bio || '');
+      setFormEducation(profile.education || '');
+      setFormExperience(profile.experience || '');
+      setFormAchievements(profile.achievements || '');
+      setFormProjects(profile.projects_json || []);
+      setFormDevRole(profile.dev_role || '');
+      setFormResume(profile.resume_url || '');
+      setAvatarUrl(profile.avatar_url || '');
+    }
+  }, [profile]);
+
   const [skillSearch, setSkillSearch] = useState('');
 
 
