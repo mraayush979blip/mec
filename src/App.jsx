@@ -261,13 +261,29 @@ function App() {
   const fetchProfile = async (userId, retries = 3) => {
     setLoadingProfile(true);
     try {
-      let response = await supabase.from('profiles').select('*').eq('id', userId).single();
+      const fetchWithTimeout = async () => {
+        return Promise.race([
+          supabase.from('profiles').select('*').eq('id', userId).single(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+        ]);
+      };
+
+      let response;
+      try {
+        response = await fetchWithTimeout();
+      } catch (err) {
+        response = { error: err };
+      }
       
       // Handle Supabase JWT race condition immediately after login
       while (response.error && retries > 0) {
         console.warn(`Profile fetch failed (likely JWT race). Retrying... (${retries} left)`);
         await new Promise(resolve => setTimeout(resolve, 500));
-        response = await supabase.from('profiles').select('*').eq('id', userId).single();
+        try {
+          response = await fetchWithTimeout();
+        } catch (err) {
+          response = { error: err };
+        }
         retries--;
       }
 
@@ -337,6 +353,11 @@ function App() {
           throw error;
         }
         localStorage.setItem('fresh_login', 'true');
+        
+        // Force a hard redirect to ensure React Router doesn't get stuck in the /login route state
+        const redirectTo = sessionStorage.getItem('redirect_to') || '/';
+        window.location.href = redirectTo;
+        return; // Prevent further execution while redirecting
       }
       else if (authFlow === 'signup') {
         if (!isOtpSent) {
