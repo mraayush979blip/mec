@@ -260,43 +260,51 @@ function App() {
 
   const fetchProfile = async (userId) => {
     setLoadingProfile(true);
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-    if (data) {
-      if (data.is_blocked) {
-        await supabase.auth.signOut();
-        setProfile(null);
-        setErrorMsg('Your account has been suspended by an administrator. Please contact support.');
-        setAuthFlow('login');
-        setLoadingProfile(false);
-        return;
+      if (error) {
+        console.error("Error fetching profile:", error);
       }
-      setProfile(data);
 
-      // OneSignal Identity & Tagging
-      try {
-        window.OneSignalDeferred = window.OneSignalDeferred || [];
-        window.OneSignalDeferred.push(function (OneSignal) {
-          OneSignal.login(data.id);
-          // Sync email for OneSignal Email service (Free Tier)
-          if (data.email) {
-            OneSignal.User.addEmail(data.email);
-          }
-          OneSignal.User.addTags({
-            full_name: data.full_name,
-            role: data.role,
-            branch: data.branch || 'Unknown'
+      if (data) {
+        if (data.is_blocked) {
+          await supabase.auth.signOut();
+          setProfile(null);
+          setErrorMsg('Your account has been suspended by an administrator. Please contact support.');
+          setAuthFlow('login');
+          return;
+        }
+        setProfile(data);
+
+        // OneSignal Identity & Tagging
+        try {
+          window.OneSignalDeferred = window.OneSignalDeferred || [];
+          window.OneSignalDeferred.push(function (OneSignal) {
+            OneSignal.login(data.id);
+            // Sync email for OneSignal Email service (Free Tier)
+            if (data.email) {
+              OneSignal.User.addEmail(data.email);
+            }
+            OneSignal.User.addTags({
+              full_name: data.full_name,
+              role: data.role,
+              branch: data.branch || 'Unknown'
+            });
           });
-        });
-      } catch (e) {
-        console.error("OneSignal Tagging Error:", e);
+        } catch (e) {
+          console.error("OneSignal Tagging Error:", e);
+        }
       }
+    } catch (err) {
+      console.error("Unexpected error in fetchProfile:", err);
+    } finally {
+      setLoadingProfile(false);
     }
-    setLoadingProfile(false);
   };
 
 
@@ -404,10 +412,6 @@ function App() {
     setLoading(false);
   };
 
-  if (loadingProfile && session) {
-    return <PremiumLoader fullScreen message="Loading your dashboard..." />;
-  }
-
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
   const handleInstallClick = async () => {
@@ -426,11 +430,10 @@ function App() {
 
   return (
     <div style={{ position: 'relative', minHeight: '100vh' }}>
-
       <ErrorBoundary>
         <Suspense fallback={<PremiumLoader fullScreen message="Loading your dashboard..." />}>
-          {initializing ? (
-            <PremiumLoader fullScreen message="Preparing your exclusive experience..." />
+          {initializing || (loadingProfile && session) ? (
+            <PremiumLoader fullScreen message={initializing ? "Preparing your exclusive experience..." : "Loading your dashboard..."} />
           ) : (
             <Routes>
               {/* LANDING PAGE */}
@@ -470,7 +473,9 @@ function App() {
                             <div className="hero-actions fade-in-up delay-3">
                               <Link to="/signup" className="btn btn-primary btn-large">Start Your Project <ArrowRight size={20} /></Link>
                               <Link to="/login" className="btn btn-secondary btn-large">Sign In</Link>
-                              <a href="https://aayush-sharma-beige.vercel.app/" target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-large btn-dev">About Developer <Sparkles size={16} style={{ marginLeft: '0.4rem' }} /></a>
+                              {!showTechlinkBranding && (
+                                <a href="https://aayush-sharma-beige.vercel.app/" target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-large btn-dev">About Developer <Sparkles size={16} style={{ marginLeft: '0.4rem' }} /></a>
+                              )}
                             </div>
                             <div className="hero-credits fade-in-up delay-3" style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(10px)' }}>
                               {showTechlinkBranding ? (
@@ -726,7 +731,7 @@ function App() {
                 !session ? (() => {
                   sessionStorage.setItem('redirect_to', window.location.pathname + window.location.search);
                   return <Navigate to="/login" replace />;
-                })() : (profile?.role !== 'admin' ? <StudentDashboard session={session} profile={profile} deferredPrompt={deferredPrompt} isInstalled={isInstalled} /> : <Navigate to="/admin" replace />)
+                })() : (profile?.role !== 'admin' ? <StudentDashboard session={session} profile={profile} deferredPrompt={deferredPrompt} isInstalled={isInstalled} showTechlinkBranding={showTechlinkBranding} /> : <Navigate to="/admin" replace />)
               } />
 
               {/* Catch-all */}

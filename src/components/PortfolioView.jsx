@@ -5,7 +5,7 @@ import {
   Briefcase, GraduationCap, Code, User, GitBranch, Phone
 } from 'lucide-react';
 
-export default function PortfolioView({ profile, onClose }) {
+export default function PortfolioView({ profile, onClose, showTechlinkBranding }) {
   const handlePrint = () => {
     window.print();
   };
@@ -211,7 +211,11 @@ export default function PortfolioView({ profile, onClose }) {
 
           {/* FOOTER BRANDING */}
           <footer style={{ marginTop: 'auto', paddingTop: '4rem', textAlign: 'center', opacity: 0.4, fontSize: '0.75rem', color: '#94a3b8' }}>
-             <p>Developed by <a href="https://aayush-sharma-beige.vercel.app/" target="_blank" rel="noreferrer" style={{ color: '#007AFF', textDecoration: 'none', fontWeight: 600 }}>Aayush Sharma</a></p>
+             {showTechlinkBranding ? (
+               <p>Developed by <strong style={{ color: '#007AFF' }}>Techlink</strong></p>
+             ) : (
+               <p>Developed by <a href="https://aayush-sharma-beige.vercel.app/" target="_blank" rel="noreferrer" style={{ color: '#007AFF', textDecoration: 'none', fontWeight: 600 }}>Aayush Sharma</a></p>
+             )}
              <p style={{ marginTop: '0.3rem' }}>Mechatronian Hub Platform &bull; Professional Portfolio Builder</p>
           </footer>
 

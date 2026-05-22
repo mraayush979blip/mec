@@ -86,7 +86,7 @@ const HelpTooltip = ({ text }) => {
   );
 };
 
-function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
+function StudentDashboard({ session, profile, deferredPrompt, isInstalled, showTechlinkBranding }) {
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -3116,8 +3116,14 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
 
               {/* DEVELOPER CREDIT */}
               <div style={{ marginTop: '4rem', textAlign: 'center', opacity: 0.5, fontSize: '0.85rem' }}>
-                <p>Developed with ❤️ by <a href="https://aayush-sharma-beige.vercel.app/" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>Aayush Sharma</a></p>
-                <p style={{ marginTop: '0.4rem', fontSize: '0.75rem' }}>Mechatronian Hub Platform &copy; 2026</p>
+                {showTechlinkBranding ? (
+                  <p>Developed by <strong style={{ color: 'var(--accent)' }}>Techlink</strong></p>
+                ) : (
+                  <>
+                    <p>Developed with ❤️ by <a href="https://aayush-sharma-beige.vercel.app/" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>Aayush Sharma</a></p>
+                    <p style={{ marginTop: '0.4rem', fontSize: '0.75rem' }}>Mechatronian Hub Platform &copy; 2026</p>
+                  </>
+                )}
               </div>
 
             </div>
@@ -3141,6 +3147,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
               linkedin_url: formLinkedin
             }} 
             onClose={() => setShowPortfolio(false)} 
+            showTechlinkBranding={showTechlinkBranding}
           />
         )}
 
