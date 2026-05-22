@@ -258,14 +258,20 @@ function App() {
 
 
 
-  const fetchProfile = async (userId) => {
+  const fetchProfile = async (userId, retries = 3) => {
     setLoadingProfile(true);
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      let response = await supabase.from('profiles').select('*').eq('id', userId).single();
+      
+      // Handle Supabase JWT race condition immediately after login
+      while (response.error && retries > 0) {
+        console.warn(`Profile fetch failed (likely JWT race). Retrying... (${retries} left)`);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        response = await supabase.from('profiles').select('*').eq('id', userId).single();
+        retries--;
+      }
+
+      const { data, error } = response;
 
       if (error) {
         console.error("Error fetching profile:", error);

@@ -11,6 +11,7 @@ import NotificationBell from './NotificationBell';
 import { sendNotification } from '../lib/notifications';
 import TeamChat from './TeamChat';
 import PortfolioView from './PortfolioView';
+import PremiumLoader from './PremiumLoader';
 
 const Skeleton = ({ width, height, borderRadius = '12px', margin = '0' }) => (
   <div className="skeleton" style={{ width, height, borderRadius, margin }} />
@@ -214,11 +215,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled, showT
   const [commentInputs, setCommentInputs] = useState({}); // {postId: 'text'}
 
   if (!profile) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column' }}>
-        <p style={{ color: 'var(--text-secondary)' }}>Loading Dashboard...</p>
-      </div>
-    );
+    return <PremiumLoader fullScreen message="Setting up your dashboard..." />;
   }
 
   // Global Chat State
