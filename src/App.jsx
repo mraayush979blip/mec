@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { Sparkles, Users, Calendar, ArrowRight, Eye, EyeOff, Activity } from 'lucide-react';
+import { Sparkles, Users, Calendar, ArrowRight, Eye, EyeOff, Activity, AlertTriangle } from 'lucide-react';
 import { Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -74,8 +74,8 @@ function App() {
       window.removeEventListener('click', enterImmersive);
     };
   }, []);
-  const [authFlow, setAuthFlow] = useState('landing'); // 'landing', 'login', 'signup', 'verify_otp', 'forgot_password', 'verify_forgot', 'reset_password'
-  const [email, setEmail] = useState('');
+  const [authFlow, setAuthFlow] = useState(() => sessionStorage.getItem('authFlow') || 'landing'); // 'landing', 'login', 'signup', 'verify_otp', 'forgot_password', 'verify_forgot', 'reset_password'
+  const [email, setEmail] = useState(() => sessionStorage.getItem('authEmail') || '');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
@@ -91,8 +91,29 @@ function App() {
   const [initializing, setInitializing] = useState(true);
   const [resendTimer, setResendTimer] = useState(0);
   const [resendAttempts, setResendAttempts] = useState(0);
+  const [showTechlinkBranding, setShowTechlinkBranding] = useState(false);
 
   useEffect(() => {
+    sessionStorage.setItem('authFlow', authFlow);
+  }, [authFlow]);
+
+  useEffect(() => {
+    sessionStorage.setItem('authEmail', email);
+  }, [email]);
+
+  useEffect(() => {
+    // Fetch global branding setting
+    supabase
+      .from('site_settings')
+      .select('value')
+      .eq('key', 'show_techlink_branding')
+      .single()
+      .then(({ data, error }) => {
+        if (!error && data) {
+          setShowTechlinkBranding(data.value === true || data.value === 'true');
+        }
+      });
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) {
@@ -147,6 +168,15 @@ function App() {
         { event: 'INSERT', schema: 'public', table: 'team_listings' },
         (payload) => {
           showNotification('New Recruitment Post!', payload.new.team_name);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'site_settings' },
+        (payload) => {
+          if (payload.new.key === 'show_techlink_branding') {
+            setShowTechlinkBranding(payload.new.value === true || payload.new.value === 'true');
+          }
         }
       )
       .subscribe();
@@ -405,14 +435,14 @@ function App() {
             <Routes>
               {/* LANDING PAGE */}
               <Route path="/" element={
-                session ? (() => {
+                (session && authFlow !== 'reset_password') ? (() => {
                   const redirectTo = sessionStorage.getItem('redirect_to');
                   if (redirectTo) {
                     sessionStorage.removeItem('redirect_to');
                     return <Navigate to={redirectTo} replace />;
                   }
                   return profile?.role === 'admin' ? <Navigate to="/admin/overview" replace /> : <Navigate to="/dashboard/events" replace />;
-                })() : (
+                })() : authFlow === 'reset_password' ? <Navigate to="/login" replace /> : (
                   <>
                     <div className="background-blobs">
                       <div className="blob blob-1"></div>
@@ -443,15 +473,27 @@ function App() {
                               <a href="https://aayush-sharma-beige.vercel.app/" target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-large btn-dev">About Developer <Sparkles size={16} style={{ marginLeft: '0.4rem' }} /></a>
                             </div>
                             <div className="hero-credits fade-in-up delay-3" style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(10px)' }}>
-                              <a href="https://aayush-sharma-beige.vercel.app/" target="_blank" rel="noopener noreferrer" className="credit-card dev-spotlight" style={{ textDecoration: 'none' }}>
-                                <div className="credit-icon dev-icon"><Activity size={18} /></div>
-                                <div className="credit-info">
-                                  <span className="credit-role" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                    Lead Developer <span className="pulse-online"></span>
-                                  </span>
-                                  <strong className="credit-name dev-name">Aayush Sharma</strong>
+                              {showTechlinkBranding ? (
+                                <div className="credit-card dev-spotlight" style={{ textDecoration: 'none', cursor: 'default' }}>
+                                  <div className="credit-icon dev-icon" style={{ background: 'var(--accent-light)', color: 'var(--accent)' }}><Activity size={18} /></div>
+                                  <div className="credit-info">
+                                    <span className="credit-role" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                      Developed By
+                                    </span>
+                                    <strong className="credit-name dev-name">Techlink</strong>
+                                  </div>
                                 </div>
-                              </a>
+                              ) : (
+                                <a href="https://aayush-sharma-beige.vercel.app/" target="_blank" rel="noopener noreferrer" className="credit-card dev-spotlight" style={{ textDecoration: 'none' }}>
+                                  <div className="credit-icon dev-icon"><Activity size={18} /></div>
+                                  <div className="credit-info">
+                                    <span className="credit-role" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                      Lead Developer <span className="pulse-online"></span>
+                                    </span>
+                                    <strong className="credit-name dev-name">Aayush Sharma</strong>
+                                  </div>
+                                </a>
+                              )}
                             </div>
                           </div>
                           <div className="hero-image-container fade-in-up delay-2">
@@ -468,7 +510,7 @@ function App() {
 
               {/* AUTH ROUTES */}
               <Route path="/login" element={
-                session ? (() => {
+                (session && authFlow !== 'reset_password') ? (() => {
                   const redirectTo = sessionStorage.getItem('redirect_to');
                   if (redirectTo) {
                     sessionStorage.removeItem('redirect_to');
@@ -477,37 +519,89 @@ function App() {
                   return <Navigate to="/" replace />;
                 })() : (
                   <AuthLayout>
-                    <h1 className="title fade-in-up delay-1" style={{ fontSize: '2.5rem' }}>Welcome Back.</h1>
-                    <p className="subtitle fade-in-up delay-2">Log in to manage teams, vote on polls, and connect with peers.</p>
-                    <form className="fade-in-up delay-3" onSubmit={(e) => { setAuthFlow('login'); handleAuth(e); }}>
-                      {errorMsg && <div className="error-alert">{errorMsg}</div>}
-                      <div className="input-group">
-                        <label className="input-label">Personal Email</label>
-                        <input type="email" className="glass-input" placeholder="student@gmail.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
-                      </div>
-                      <div className="input-group">
-                        <label className="input-label">Password</label>
-                        <div style={{ position: 'relative' }}>
-                          <input type={showPassword ? "text" : "password"} className="glass-input" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
-                          <button type="button" className="password-toggle" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
+                    {authFlow === 'forgot_password' ? (
+                      <>
+                        <h1 className="title fade-in-up delay-1" style={{ fontSize: '2.5rem' }}>Reset Password</h1>
+                        <p className="subtitle fade-in-up delay-2">Enter your email to receive a password reset link.</p>
+                        <form className="fade-in-up delay-3" onSubmit={(e) => { handleAuth(e); }}>
+                          {errorMsg && <div className="error-alert">{errorMsg}</div>}
+                          <div className="input-group">
+                            <label className="input-label">Personal Email</label>
+                            <input type="email" className="glass-input" placeholder="student@gmail.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                          </div>
+                          <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={loading}>{loading ? 'Sending...' : 'Send Reset Code'} <ArrowRight size={18} /></button>
+                        </form>
+                        <p style={{ marginTop: '2rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}><span onClick={() => { setAuthFlow('login'); setErrorMsg(''); }} style={{ color: 'var(--accent)', cursor: 'pointer', fontWeight: 600 }}>Back to Login</span></p>
+                      </>
+                    ) : authFlow === 'verify_forgot' ? (
+                      <>
+                        <h1 className="title fade-in-up delay-1" style={{ fontSize: '2.5rem' }}>Verify OTP</h1>
+                        <p className="subtitle fade-in-up delay-2">Enter the OTP sent to your email.</p>
+                        <div className="fade-in-up delay-2" style={{ background: 'rgba(255,204,0,0.1)', color: '#FFCC00', padding: '0.8rem', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <AlertTriangle size={16} /> If you can't find the email, please check your Spam/Junk folder.
                         </div>
-                      </div>
-                      <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={loading}>{loading ? 'Signing In...' : 'Sign In'} <ArrowRight size={18} /></button>
-                    </form>
-                    <p style={{ marginTop: '2rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Don't have an account? <Link to="/signup" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Sign up here</Link></p>
+                        <form className="fade-in-up delay-3" onSubmit={(e) => { handleAuth(e); }}>
+                          {errorMsg && <div className="error-alert">{errorMsg}</div>}
+                          <div className="input-group">
+                            <input type="text" className="glass-input" placeholder="00000000" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 8))} required style={{ textAlign: 'center', letterSpacing: '0.4em', fontSize: '1.5rem', fontWeight: 800, padding: '1.2rem' }} />
+                          </div>
+                          <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={loading || otp.length < 8}>{loading ? 'Verifying...' : 'Verify OTP'} <ArrowRight size={18} /></button>
+                        </form>
+                      </>
+                    ) : authFlow === 'reset_password' ? (
+                      <>
+                        <h1 className="title fade-in-up delay-1" style={{ fontSize: '2.5rem' }}>New Password</h1>
+                        <p className="subtitle fade-in-up delay-2">Enter your new password.</p>
+                        <form className="fade-in-up delay-3" onSubmit={(e) => { handleAuth(e); }}>
+                          {errorMsg && <div className="error-alert">{errorMsg}</div>}
+                          <div className="input-group">
+                            <label className="input-label">New Password</label>
+                            <div style={{ position: 'relative' }}>
+                              <input type={showPassword ? "text" : "password"} className="glass-input" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                              <button type="button" className="password-toggle" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
+                            </div>
+                          </div>
+                          <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={loading}>{loading ? 'Updating...' : 'Update Password'} <ArrowRight size={18} /></button>
+                        </form>
+                      </>
+                    ) : (
+                      <>
+                        <h1 className="title fade-in-up delay-1" style={{ fontSize: '2.5rem' }}>Welcome Back.</h1>
+                        <p className="subtitle fade-in-up delay-2">Log in to manage teams, vote on polls, and connect with peers.</p>
+                        <form className="fade-in-up delay-3" onSubmit={(e) => { setAuthFlow('login'); handleAuth(e); }}>
+                          {errorMsg && <div className="error-alert">{errorMsg}</div>}
+                          <div className="input-group">
+                            <label className="input-label">Personal Email</label>
+                            <input type="email" className="glass-input" placeholder="student@gmail.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                          </div>
+                          <div className="input-group">
+                            <label className="input-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span>Password</span>
+                              <span onClick={() => { setAuthFlow('forgot_password'); setErrorMsg(''); }} style={{ color: 'var(--accent)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>Forgot Password?</span>
+                            </label>
+                            <div style={{ position: 'relative' }}>
+                              <input type={showPassword ? "text" : "password"} className="glass-input" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                              <button type="button" className="password-toggle" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
+                            </div>
+                          </div>
+                          <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={loading}>{loading ? 'Signing In...' : 'Sign In'} <ArrowRight size={18} /></button>
+                        </form>
+                        <p style={{ marginTop: '2rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Don't have an account? <Link to="/signup" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Sign up here</Link></p>
+                      </>
+                    )}
                   </AuthLayout>
                 )
               } />
 
               <Route path="/signup" element={
-                session ? (() => {
+                (session && authFlow !== 'reset_password') ? (() => {
                   const redirectTo = sessionStorage.getItem('redirect_to');
                   if (redirectTo) {
                     sessionStorage.removeItem('redirect_to');
                     return <Navigate to={redirectTo} replace />;
                   }
                   return <Navigate to="/" replace />;
-                })() : (
+                })() : authFlow === 'reset_password' ? <Navigate to="/login" replace /> : (
                   <AuthLayout>
                     {!isOtpSent ? (
                       <>

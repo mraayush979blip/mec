@@ -57,6 +57,28 @@ function AdminDashboard({ session, profile }) {
   const [loading, setLoading] = useState(true);
   const [editingEvent, setEditingEvent] = useState(null);
   const [events, setEvents] = useState([]);
+  const [showTechlinkBranding, setShowTechlinkBranding] = useState(false);
+
+  useEffect(() => {
+    supabase.from('site_settings').select('value').eq('key', 'show_techlink_branding').single().then(({ data }) => {
+      if (data) setShowTechlinkBranding(data.value === true || data.value === 'true');
+    });
+  }, []);
+
+  const handleToggleBranding = async () => {
+    const newValue = !showTechlinkBranding;
+    setShowTechlinkBranding(newValue);
+    const { error } = await supabase
+      .from('site_settings')
+      .update({ value: newValue })
+      .eq('key', 'show_techlink_branding');
+    
+    if (error) {
+      console.error('Error updating branding:', error);
+      alert('Failed to update branding: ' + error.message);
+      setShowTechlinkBranding(!newValue); // Revert on failure
+    }
+  };
 
   const triggerHaptic = (pattern = 10) => {
     if (window.navigator && window.navigator.vibrate) {
@@ -642,9 +664,15 @@ function AdminDashboard({ session, profile }) {
             ))}
           </nav>
 
-          <button className="btn" style={{ padding: '0.5rem', background: 'transparent' }} onClick={() => supabase.auth.signOut()}>
-            <LogOut size={20} color="var(--text-secondary)" />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <label className="toggle-switch" style={{ margin: 0 }}>
+              <input type="checkbox" checked={showTechlinkBranding} onChange={handleToggleBranding} />
+              <span className="slider round"></span>
+            </label>
+            <button className="btn" style={{ padding: '0.5rem', background: 'transparent' }} onClick={() => supabase.auth.signOut()}>
+              <LogOut size={20} color="var(--text-secondary)" />
+            </button>
+          </div>
         </div>
       </header>
 

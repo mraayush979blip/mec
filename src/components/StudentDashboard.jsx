@@ -164,9 +164,15 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
           redirectTo: window.location.origin + '/dashboard/profile'
         }
       });
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes('already linked to another user')) {
+          alert('This LinkedIn account is already in use by another profile. Please try again with a different account.');
+        } else {
+          throw error;
+        }
+      }
     } catch (err) {
-      alert("LinkedIn OAuth not fully configured yet: " + err.message);
+      alert("LinkedIn OAuth Error: " + err.message);
     }
   };
 
@@ -2976,17 +2982,13 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
                 </div>
                 <div className="input-group">
                   <label className="input-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>LinkedIn Profile URL</span>
+                    <span>LinkedIn Profile</span>
                     {isLinkedInVerified ? (
                       <span className="badge badge-green" style={{ fontSize: '0.7rem' }}><CheckCircle size={10} style={{ marginRight: '4px', display: 'inline-block' }}/> Verified</span>
                     ) : (
                       <button type="button" onClick={handleAuthorizeLinkedIn} className="badge badge-blue" style={{ cursor: 'pointer', border: 'none', display: 'flex', gap: '0.4rem', alignItems: 'center' }}><Globe size={12}/> Authorize</button>
                     )}
                   </label>
-                  <div style={{ position: 'relative' }}>
-                    <Globe size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-                    <input type="url" className="glass-input" style={{ paddingLeft: '3rem' }} value={formLinkedin} onChange={(e)=>setFormLinkedin(e.target.value)} placeholder="https://..." />
-                  </div>
                   {!isLinkedInVerified && (
                      <p style={{ fontSize: '0.7rem', color: 'var(--accent)', marginTop: '0.4rem', fontWeight: 600 }}>Click Authorize above to verify your identity via LinkedIn OAuth.</p>
                   )}
@@ -3267,7 +3269,6 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled }) {
               <ol style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', paddingLeft: '1.2rem', margin: 0, lineHeight: 1.6 }}>
                 <li>Go to your <strong>Profile</strong> tab</li>
                 <li>Tap <strong>Edit Profile</strong></li>
-                <li>Paste your LinkedIn URL</li>
                 <li>Click the blue <strong>Authorize</strong> button to verify</li>
                 <li>Save Changes</li>
               </ol>
