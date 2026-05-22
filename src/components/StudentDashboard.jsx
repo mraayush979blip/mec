@@ -214,9 +214,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled, showT
   const [isLikeLoading, setIsLikeLoading] = useState({});
   const [commentInputs, setCommentInputs] = useState({}); // {postId: 'text'}
 
-  if (!profile) {
-    return <PremiumLoader fullScreen message="Setting up your dashboard..." />;
-  }
+
 
   // Global Chat State
 
@@ -1432,6 +1430,10 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled, showT
 
     alert(`Request ${status} successfully!`);
   };
+
+  if (!profile) {
+    return <PremiumLoader fullScreen message="Setting up your dashboard..." />;
+  }
 
   return (
     <div 
