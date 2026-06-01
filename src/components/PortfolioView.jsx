@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Mail, Globe, MapPin, 
   ExternalLink, Download, ArrowLeft, Award, 
   Briefcase, GraduationCap, Code, User, GitBranch, Phone
 } from 'lucide-react';
+import TeamTechlinkModal from './TeamTechlinkModal';
 
 export default function PortfolioView({ profile, onClose, showTechlinkBranding }) {
+  const [showTeamTechlinkModal, setShowTeamTechlinkModal] = useState(false);
+
   const handlePrint = () => {
     window.print();
   };
@@ -212,7 +215,7 @@ export default function PortfolioView({ profile, onClose, showTechlinkBranding }
           {/* FOOTER BRANDING */}
           <footer style={{ marginTop: 'auto', paddingTop: '4rem', textAlign: 'center', opacity: 0.4, fontSize: '0.75rem', color: '#94a3b8' }}>
              {showTechlinkBranding ? (
-               <p>Developed by <strong style={{ color: '#007AFF' }}>Techlink</strong></p>
+               <p>Developed by <strong style={{ color: '#007AFF', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setShowTeamTechlinkModal(true)}>Techlink</strong></p>
              ) : (
                <p>Developed by <a href="https://aayush-sharma-beige.vercel.app/" target="_blank" rel="noreferrer" style={{ color: '#007AFF', textDecoration: 'none', fontWeight: 600 }}>Aayush Sharma</a></p>
              )}
@@ -261,6 +264,11 @@ export default function PortfolioView({ profile, onClose, showTechlinkBranding }
         }
       `}</style>
 
+      {showTeamTechlinkModal && (
+        <div className="no-print">
+          <TeamTechlinkModal onClose={() => setShowTeamTechlinkModal(false)} />
+        </div>
+      )}
     </div>
   );
 }
