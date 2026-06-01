@@ -12,6 +12,7 @@ import { sendNotification } from '../lib/notifications';
 import TeamChat from './TeamChat';
 import PortfolioView from './PortfolioView';
 import PremiumLoader from './PremiumLoader';
+import TeamTechlinkModal from './TeamTechlinkModal';
 
 const Skeleton = ({ width, height, borderRadius = '12px', margin = '0' }) => (
   <div className="skeleton" style={{ width, height, borderRadius, margin }} />
@@ -97,6 +98,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled, showT
 
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showTeamTechlinkModal, setShowTeamTechlinkModal] = useState(false);
 
   // Sub-views for events
   const [selectedEvent, setSelectedEvent] = useState(null); // When an event is clicked for "Join Team"
@@ -3135,7 +3137,7 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled, showT
               {/* DEVELOPER CREDIT */}
               <div style={{ marginTop: '4rem', textAlign: 'center', opacity: 0.5, fontSize: '0.85rem' }}>
                 {showTechlinkBranding ? (
-                  <p>Developed by <strong style={{ color: 'var(--accent)' }}>Techlink</strong></p>
+                  <p>Developed by <strong style={{ color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setShowTeamTechlinkModal(true)}>Techlink</strong></p>
                 ) : (
                   <>
                     <p>Developed with ❤️ by <a href="https://aayush-sharma-beige.vercel.app/" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>Aayush Sharma</a></p>
@@ -3304,6 +3306,9 @@ function StudentDashboard({ session, profile, deferredPrompt, isInstalled, showT
             </div>
           </div>
         </div>
+      )}
+      {showTeamTechlinkModal && (
+        <TeamTechlinkModal onClose={() => setShowTeamTechlinkModal(false)} />
       )}
     </div>
   );
