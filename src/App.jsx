@@ -9,6 +9,7 @@ import { Analytics } from "@vercel/analytics/react";
 
 const StudentDashboard = lazy(() => import('./components/StudentDashboard'));
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
+import TeamTechlinkModal from './components/TeamTechlinkModal';
 
 const AuthLayout = ({ children }) => (
   <>
@@ -92,6 +93,12 @@ function App() {
   const [resendTimer, setResendTimer] = useState(0);
   const [resendAttempts, setResendAttempts] = useState(0);
   const [showTechlinkBranding, setShowTechlinkBranding] = useState(false);
+  const [showTeamTechlinkModal, setShowTeamTechlinkModal] = useState(false);
+
+  const isAdminEmail = (email) => {
+    return email === 'the.mechatronian@gmail.com' || email === 'himanshubhiwapurkar@acropolis.in';
+  };
+  const userIsAdmin = profile?.role === 'admin' || isAdminEmail(session?.user?.email) || isAdminEmail(profile?.email);
 
   useEffect(() => {
     sessionStorage.setItem('authFlow', authFlow);
@@ -301,7 +308,16 @@ function App() {
           setAuthFlow('login');
           return;
         }
-        setProfile(data);
+        let profileData = { ...data };
+        if (
+          profileData.email === 'the.mechatronian@gmail.com' || 
+          profileData.email === 'himanshubhiwapurkar@acropolis.in' ||
+          session?.user?.email === 'the.mechatronian@gmail.com' ||
+          session?.user?.email === 'himanshubhiwapurkar@acropolis.in'
+        ) {
+          profileData.role = 'admin';
+        }
+        setProfile(profileData);
 
         // OneSignal Identity & Tagging
         try {
@@ -468,7 +484,7 @@ function App() {
                     sessionStorage.removeItem('redirect_to');
                     return <Navigate to={redirectTo} replace />;
                   }
-                  return profile?.role === 'admin' ? <Navigate to="/admin/overview" replace /> : <Navigate to="/dashboard/events" replace />;
+                  return userIsAdmin ? <Navigate to="/admin/overview" replace /> : <Navigate to="/dashboard/events" replace />;
                 })() : authFlow === 'reset_password' ? <Navigate to="/login" replace /> : (
                   <>
                     <div className="background-blobs">
@@ -503,13 +519,17 @@ function App() {
                             </div>
                             <div className="hero-credits fade-in-up delay-3" style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(10px)' }}>
                               {showTechlinkBranding ? (
-                                <div className="credit-card dev-spotlight" style={{ textDecoration: 'none', cursor: 'default' }}>
+                                <div 
+                                  className="credit-card dev-spotlight" 
+                                  style={{ textDecoration: 'none', cursor: 'pointer' }}
+                                  onClick={() => setShowTeamTechlinkModal(true)}
+                                >
                                   <div className="credit-icon dev-icon" style={{ background: 'var(--accent-light)', color: 'var(--accent)' }}><Activity size={18} /></div>
                                   <div className="credit-info">
                                     <span className="credit-role" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                       Developed By
                                     </span>
-                                    <strong className="credit-name dev-name">Techlink</strong>
+                                    <strong className="credit-name dev-name" style={{ textDecoration: 'underline' }}>Techlink</strong>
                                   </div>
                                 </div>
                               ) : (
@@ -747,7 +767,9 @@ function App() {
 
               {/* DASHBOARD ROUTES */}
               <Route path="/admin/*" element={
-                !session ? <Navigate to="/login" replace /> : (profile?.role === 'admin' ? <AdminDashboard session={session} profile={profile} /> : <Navigate to="/dashboard" replace />)
+                !session ? <Navigate to="/login" replace /> : 
+                (!profile ? <PremiumLoader fullScreen message="Checking authorization..." /> : 
+                (userIsAdmin ? <AdminDashboard session={session} profile={profile} /> : <Navigate to="/dashboard" replace />))
               } />
 
               <Route path="/dashboard" element={<Navigate to="/dashboard/events" replace />} />
@@ -755,7 +777,9 @@ function App() {
                 !session ? (() => {
                   sessionStorage.setItem('redirect_to', window.location.pathname + window.location.search);
                   return <Navigate to="/login" replace />;
-                })() : (profile?.role !== 'admin' ? <StudentDashboard session={session} profile={profile} deferredPrompt={deferredPrompt} isInstalled={isInstalled} showTechlinkBranding={showTechlinkBranding} /> : <Navigate to="/admin" replace />)
+                })() : 
+                (!profile ? <PremiumLoader fullScreen message="Loading dashboard..." /> : 
+                (!userIsAdmin ? <StudentDashboard session={session} profile={profile} deferredPrompt={deferredPrompt} isInstalled={isInstalled} showTechlinkBranding={showTechlinkBranding} /> : <Navigate to="/admin" replace />))
               } />
 
               {/* Catch-all */}
@@ -770,6 +794,9 @@ function App() {
         </Suspense>
       </ErrorBoundary>
       <Analytics />
+      {showTeamTechlinkModal && (
+        <TeamTechlinkModal onClose={() => setShowTeamTechlinkModal(false)} />
+      )}
     </div>
   );
 }
